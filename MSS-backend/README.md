@@ -28,8 +28,9 @@
 - `moodsphere-common`：通用组件与工具类
 - `moodsphere-quartz`：定时任务模块
 - `moodsphere-generator`：代码生成模块
+- `moodsphere-biz`：业务聚合模块（承载业务子模块）
 
-## 业务模块（建议落地）
+## 业务模块（已初始化骨架）
 
 - `system-user`：用户注册、登录鉴权、账号安全、Token 生命周期
 - `mood-record`：情绪记录主流程、草稿、编辑、分页查询

@@ -170,6 +170,76 @@
                 <version>${moodsphere.version}</version>
             </dependency>
 
+            <!-- 业务聚合模块-->
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>moodsphere-biz</artifactId>
+                <version>${moodsphere.version}</version>
+                <type>pom</type>
+            </dependency>
+
+            <!-- 业务子模块 -->
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>system-user</artifactId>
+                <version>${moodsphere.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>mood-record</artifactId>
+                <version>${moodsphere.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>mood-asset</artifactId>
+                <version>${moodsphere.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>mood-ai-analyze</artifactId>
+                <version>${moodsphere.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>mood-vector</artifactId>
+                <version>${moodsphere.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>mood-weather-engine</artifactId>
+                <version>${moodsphere.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>mood-report</artifactId>
+                <version>${moodsphere.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>mood-globe</artifactId>
+                <version>${moodsphere.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>mood-risk</artifactId>
+                <version>${moodsphere.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>mood-notify</artifactId>
+                <version>${moodsphere.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>mood-config</artifactId>
+                <version>${moodsphere.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.moodsphere</groupId>
+                <artifactId>mood-stat</artifactId>
+                <version>${moodsphere.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
@@ -179,6 +249,7 @@
         <module>moodsphere-system</module>
         <module>moodsphere-quartz</module>
         <module>moodsphere-generator</module>
+        <module>moodsphere-biz</module>
         <module>moodsphere-common</module>
     </modules>
     <packaging>pom</packaging>
