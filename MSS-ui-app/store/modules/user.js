@@ -1,12 +1,38 @@
 import config from '@/config'
 import storage from '@/utils/storage'
 import constant from '@/utils/constant'
-import { isHttp, isEmpty } from "@/utils/validate"
-import { login, logout, getInfo } from '@/api/login'
+import { isHttp, isEmpty } from '@/utils/validate'
+import { wechatMiniappLogin, logout, getWechatMiniappInfo } from '@/api/login'
 import { getToken, setToken, removeToken } from '@/utils/auth'
 import defAva from '@/static/images/profile.jpg'
 
 const baseUrl = config.baseUrl
+
+function normalizeAvatar(avatar) {
+  if (!isHttp(avatar)) {
+    return isEmpty(avatar) ? defAva : baseUrl + avatar
+  }
+  return avatar
+}
+
+function commitUserInfo(commit, res) {
+  const user = (res && res.user) || {}
+  const userId = isEmpty(user.userId) ? '' : user.userId
+  const userName = isEmpty(user.nickName) ? (isEmpty(user.userName) ? '' : user.userName) : user.nickName
+  const avatar = normalizeAvatar(user.avatar || '')
+
+  if (res && res.roles && res.roles.length > 0) {
+    commit('SET_ROLES', res.roles)
+    commit('SET_PERMISSIONS', res.permissions || [])
+  } else {
+    commit('SET_ROLES', ['ROLE_DEFAULT'])
+    commit('SET_PERMISSIONS', [])
+  }
+
+  commit('SET_ID', userId)
+  commit('SET_NAME', userName)
+  commit('SET_AVATAR', avatar)
+}
 
 const user = {
   state: {
@@ -45,43 +71,17 @@ const user = {
   },
 
   actions: {
-    // 登录
-    Login({ commit }, userInfo) {
-      const username = userInfo.username.trim()
-      const password = userInfo.password
-      const code = userInfo.code
-      const uuid = userInfo.uuid
+    Login({ commit }, loginBody) {
       return new Promise((resolve, reject) => {
-        login(username, password, code, uuid).then(res => {
+        wechatMiniappLogin(loginBody).then(res => {
+          if (!res.token) {
+            reject(new Error('Missing token from wechat login response'))
+            return
+          }
+
           setToken(res.token)
           commit('SET_TOKEN', res.token)
-          resolve()
-        }).catch(error => {
-          reject(error)
-        })
-      })
-    },
-
-    // 获取用户信息
-    GetInfo({ commit, state }) {
-      return new Promise((resolve, reject) => {
-        getInfo().then(res => {
-          const user = res.user
-		  let avatar = user.avatar || ""
-		  if (!isHttp(avatar)) {
-            avatar = (isEmpty(avatar)) ? defAva : baseUrl + avatar
-          }
-          const userid = (isEmpty(user) || isEmpty(user.userId)) ? "" : user.userId
-		  const username = (isEmpty(user) || isEmpty(user.userName)) ? "" : user.userName
-		  if (res.roles && res.roles.length > 0) {
-            commit('SET_ROLES', res.roles)
-            commit('SET_PERMISSIONS', res.permissions)
-          } else {
-            commit('SET_ROLES', ['ROLE_DEFAULT'])
-          }
-          commit('SET_ID', userid)
-          commit('SET_NAME', username)
-          commit('SET_AVATAR', avatar)
+          commitUserInfo(commit, res)
           resolve(res)
         }).catch(error => {
           reject(error)
@@ -89,10 +89,20 @@ const user = {
       })
     },
 
-    // 退出系统
-    LogOut({ commit, state }) {
+    GetInfo({ commit }) {
       return new Promise((resolve, reject) => {
-        logout(state.token).then(() => {
+        getWechatMiniappInfo().then(res => {
+          commitUserInfo(commit, res)
+          resolve(res)
+        }).catch(error => {
+          reject(error)
+        })
+      })
+    },
+
+    LogOut({ commit }) {
+      return new Promise((resolve, reject) => {
+        logout().then(() => {
           commit('SET_TOKEN', '')
           commit('SET_ROLES', [])
           commit('SET_PERMISSIONS', [])

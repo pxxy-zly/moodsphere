@@ -20,6 +20,10 @@
             <groupId>com.moodsphere</groupId>
             <artifactId>moodsphere-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.moodsphere</groupId>
+            <artifactId>moodsphere-framework</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 
-// 登录方法
+// 账号密码登录（兼容保留）
 export function login(username, password, code, uuid) {
   const data = {
     username,
@@ -9,16 +9,33 @@ export function login(username, password, code, uuid) {
     uuid
   }
   return request({
-    'url': '/login',
+    url: '/login',
     headers: {
       isToken: false
     },
-    'method': 'post',
-    'data': data
+    method: 'post',
+    data
   })
 }
 
-// 注册方法
+export function wechatMiniappLogin(data) {
+  return request({
+    url: '/app/auth/wechat/miniapp/login',
+    headers: {
+      isToken: false
+    },
+    method: 'post',
+    data
+  })
+}
+
+export function getWechatMiniappInfo() {
+  return request({
+    url: '/app/auth/wechat/miniapp/info',
+    method: 'get'
+  })
+}
+
 export function register(data) {
   return request({
     url: '/register',
@@ -26,30 +43,27 @@ export function register(data) {
       isToken: false
     },
     method: 'post',
-    data: data
+    data
   })
 }
 
-// 获取用户详细信息
 export function getInfo() {
   return request({
-    'url': '/getInfo',
-    'method': 'get'
+    url: '/getInfo',
+    method: 'get'
   })
 }
 
-// 退出方法
 export function logout() {
   return request({
-    'url': '/logout',
-    'method': 'post'
+    url: '/logout',
+    method: 'post'
   })
 }
 
-// 获取验证码
 export function getCodeImg() {
   return request({
-    'url': '/captchaImage',
+    url: '/captchaImage',
     headers: {
       isToken: false
     },

@@ -40,6 +40,30 @@ CREATE TABLE `biz_user_info` (
   KEY `idx_nick_name` (`nick_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='用户扩展信息表';
 
+-- 1.2 第三方登录绑定表
+DROP TABLE IF EXISTS `biz_user_auth`;
+CREATE TABLE `biz_user_auth` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id` bigint NOT NULL COMMENT '系统用户ID，关联sys_user.user_id',
+  `auth_type` varchar(30) NOT NULL COMMENT '认证类型（wechat_mp小程序 wechat_app微信APP wechat_h5公众号）',
+  `openid` varchar(100) DEFAULT NULL COMMENT '微信openid',
+  `unionid` varchar(100) DEFAULT NULL COMMENT '微信unionid',
+  `session_key` varchar(255) DEFAULT NULL COMMENT '会话密钥',
+  `auth_status` tinyint DEFAULT '1' COMMENT '状态（0禁用 1正常）',
+  `last_login_time` datetime DEFAULT NULL COMMENT '最后登录时间',
+  `last_login_ip` varchar(64) DEFAULT NULL COMMENT '最后登录IP',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `create_by` varchar(64) DEFAULT NULL COMMENT '创建者',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+  `del_flag` tinyint DEFAULT '0' COMMENT '删除标记（0正常 1删除）',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_auth_type_openid` (`auth_type`,`openid`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_unionid` (`unionid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='第三方登录绑定表';
+
 -- 2. 情绪标签表
 DROP TABLE IF EXISTS `biz_tag`;
 CREATE TABLE `biz_tag` (
