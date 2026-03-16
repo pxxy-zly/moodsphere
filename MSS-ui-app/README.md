@@ -1,51 +1,119 @@
-<p align="center">
-	<img alt="logo" src="https://oscimg.oschina.net/oscnet/up-43e3941654fa3054c9684bf53d1b1d356a1.png">
-</p>
-<h1 align="center" style="margin: 30px 0 30px; font-weight: bold;">RuoYi v1.2.0</h1>
-<h4 align="center">基于UniApp开发的轻量级移动端框架</h4>
-<p align="center">
-	<a href="https://gitee.com/y_project/RuoYi-App/stargazers"><img src="https://gitee.com/y_project/RuoYi-App/badge/star.svg?theme=dark"></a>
-	<a href="https://gitee.com/y_project/RuoYi-App"><img src="https://img.shields.io/badge/RuoYi-v1.2.0-brightgreen.svg"></a>
-	<a href="https://gitee.com/y_project/RuoYi-App/blob/master/LICENSE"><img src="https://img.shields.io/github/license/mashape/apistatus.svg"></a>
-</p>
+# MoodSphere Station 移动端（MSS-ui-app）
 
-## 平台简介
+## 项目简介
 
-RuoYi App 移动解决方案，采用uniapp框架，一份代码多终端适配，同时支持APP、小程序、H5！实现了与[RuoYi-Vue](https://gitee.com/y_project/RuoYi-Vue)、[RuoYi-Cloud](https://gitee.com/y_project/RuoYi-Cloud)完美对接的移动解决方案！目前已经实现登录、我的、工作台、编辑资料、头像修改、密码修改、常见问题、关于我们等基础功能。
+心境气象站（MoodSphere Station，MSS）是一款基于 Spring Boot 3、Vue 3 与 UniApp 构建的全栈实验型应用。项目通过文本、语音、图片等多模态方式采集用户情绪输入，结合 AI 大模型进行语义分析与情绪向量提取，并将结果映射为动态天气参数，形成个性化的“情绪天气”数字景观。系统同时支持基于 Three.js 的群体情绪数字地球展示，以可视化方式呈现匿名群体情绪的空间分布与动态变化，适用于心理健康辅助、情绪记录、社交互动及数字艺术展示等场景。
 
-* 提供了 [RuoYi-App-Vue2](https://gitee.com/y_project/RuoYi-App) 和 [RuoYi-App-Vue3](https://gitee.com/y_project/RuoYi-App/tree/vue3) 两个版本，分别基于 Vue2/Vuex 和 Vue3/Pinia 技术栈，以满足不同项目的技术选型需求。
-* 配套后端代码仓库地址[RuoYi-Vue](https://gitee.com/y_project/RuoYi-Vue) 或 [RuoYi-Cloud](https://github.com/yangzongzhuan/RuoYi-Cloud) 版本。
-* 应用框架基于[uniapp](https://uniapp.dcloud.net.cn/)，支持小程序、H5、Android和IOS。
-* 前端组件采用[uni-ui](https://github.com/dcloudio/uni-ui)，全端兼容的高性能UI框架。
-* 阿里云折扣场：[点我进入](http://aly.ruoyi.vip)，腾讯云秒杀场：[点我进入](http://txy.ruoyi.vip)&nbsp;&nbsp;
+本仓库为 MSS 移动端应用，基于若依 UniApp 初始代码扩展，主要承载：
 
+- 用户日常情绪记录与查看
+- 文本、语音、图片等多模态输入入口
+- 个性化“情绪天气”结果展示
+- 个人成长轨迹与情绪互动能力
 
-## 技术文档
+## 产品定位
 
-- 官网网站：[http://ruoyi.vip](http://ruoyi.vip)
-- 文档地址：[http://doc.ruoyi.vip](http://doc.ruoyi.vip)
-- H5页体验：[http://h5.ruoyi.vip](http://h5.ruoyi.vip)
-- QQ交流群： ①133713780(满)、②146013835(满)、③189091635
-- 小程序体验
+MSS 移动端定位为“情绪记录 + 情绪可视化 + 轻陪伴 + 个人成长”的日常应用，设计上兼顾：
 
-<img src="https://oscimg.oschina.net/oscnet/up-26c76dc90b92acdbd9ac8cd5252f07c8ad9.jpg" alt="小程序演示"/>
- 
-## 演示图
+- 快速记录
+- 实时反馈
+- 历史复盘
+- 轻度互动
+- 沉浸体验
 
-<table>
-    <tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-21f6f842fdc94540469b4eb43fdadbaf7f8.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-a6f23cf9a371a30165e135eff6d9ae89a9d.png"/></td>
-		<td><img src="https://oscimg.oschina.net/oscnet/up-ff5f62016bf6624c1ff27eee57499dccd44.png"/></td>
-    </tr>
-	<tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-b9a582fdb26ec69d407fabd044d2c8494df.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-96427ee08fca29d77934cfc8d1b1a637cef.png"/></td>
-		<td><img src="https://oscimg.oschina.net/oscnet/up-5fdadc582d24cccd7727030d397b63185a3.png"/></td>
-    </tr>
-	<tr>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-0a36797b6bcc50c36d40c3c782665b89efc.png"/></td>
-        <td><img src="https://oscimg.oschina.net/oscnet/up-d77995cc00687cedd00d5ac7d68a07ea276.png"/></td>
-		<td><img src="https://oscimg.oschina.net/oscnet/up-fa8f5ab20becf59b4b38c1b92a9989e7109.png"/></td>
-    </tr>
-</table>
+## TabBar 结构（推荐）
+
+- 天气：`/pages/weather/index`
+- 记录：`/pages/record/index`
+- 星球：`/pages/globe/index`
+- 报告：`/pages/report/index`
+- 我的：`/pages/mine/index`
+
+## TabBar 页面职责
+
+- 天气页：展示当前情绪天气主视觉、AI 摘要、参数简报、趋势小卡
+- 记录页：承载文本/语音/图片输入、标签与强度、公开星球开关
+- 星球页：展示匿名群体情绪投影与区域热力、时间维度切换
+- 报告页：展示今日/周/月趋势、波动指数、关键词云、复盘洞察
+- 我的页：管理个人资料、隐私设置、提醒配置、消息与帮助
+
+## 非 TabBar 页面蓝图
+
+- 账号体系：启动页、登录页、注册引导页
+- 记录流程：语音转写页、图片分析页、记录成功页、分析结果页
+- 天气流程：天气详情页、历史天气回放页、天气分享页
+- 报告流程：日报详情页、周报详情页、月报详情页、关键词云详情页
+- 星球流程：星球详情页、区域情绪详情页、我的投影记录页
+- 个人中心：资料页、隐私设置页、消息中心页、提醒设置页、帮助反馈页、勋章成就页
+
+## 页面路由建议
+
+- `pages/weather/index`
+- `pages/weather/detail`
+- `pages/record/index`
+- `pages/record/voice`
+- `pages/record/image`
+- `pages/record/result`
+- `pages/globe/index`
+- `pages/globe/detail`
+- `pages/report/index`
+- `pages/report/day`
+- `pages/report/week`
+- `pages/report/month`
+- `pages/mine/index`
+- `pages/mine/profile`
+- `pages/mine/privacy`
+- `pages/mine/message`
+- `pages/mine/remind`
+- `pages/auth/login`
+- `pages/auth/register`
+- `pages/common/splash`
+
+## 技术栈
+
+- UniApp
+- Vue
+- uni-ui
+- Vuex（当前工程）
+
+## 运行方式
+
+1. 使用 HBuilderX 导入项目目录
+2. 配置后端服务地址
+3. 运行到 H5、Android、iOS 或小程序平台进行调试
+
+## 与后端模块对应关系
+
+- 天气页：`mood-record` + `mood-vector` + `mood-weather-engine` + `mood-report`
+- 记录页：`mood-record` + `mood-asset` + `mood-ai-analyze`
+- 星球页：`mood-globe` + `mood-stat`
+- 报告页：`mood-report` + `mood-vector` + `mood-stat`
+- 我的页：`system-user` + `mood-notify` + `mood-config`
+
+## MVP 建议范围
+
+优先上线页面：
+
+- 天气页
+- 记录页
+- 报告页
+- 我的页
+- 登录页
+- 情绪分析结果页
+- 天气详情页
+
+优先上线后端能力：
+
+- 用户与认证
+- 情绪记录
+- 素材上传
+- AI 情绪分析
+- 情绪向量
+- 情绪天气映射
+- 情绪报告
+- 配置中心
+
+## 说明
+
+- 当前代码基于若依移动端初始工程，后续将按页面蓝图逐步切换为 MSS 业务页面
+- 建议与后端服务（MSS-backend）配套联调
