@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "MSS Backend",
+      "request": "launch",
+      "mainClass": "com.moodsphere.RuoYiApplication",
+      "projectName": "moodsphere-admin",
+      "cwd": "${workspaceFolder}/MSS-backend/moodsphere-admin",
+      "vmArgs": "-Xmx2g -Dspring.profiles.active=druid -Dfile.encoding=UTF-8",
+      "env": {
+        "MAVEN_OPTS": "-Xmx2g",
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "name": "MSS PC Frontend",
+      "request": "launch",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}/MSS-ui-admin",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    }
+  ]
+}
