@@ -5,24 +5,29 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
-import com.moodsphere.common.exception.ServiceException;
-import com.moodsphere.common.utils.SecurityUtils;
-import com.moodsphere.common.utils.StringUtils;
 import com.moodsphere.analyze.domain.entity.BizAiAnalysisResult;
 import com.moodsphere.analyze.domain.vo.MoodAnalyzeResultVo;
 import com.moodsphere.analyze.mapper.BizAiAnalysisResultMapper;
 import com.moodsphere.analyze.service.IMoodAiAnalyzeService;
+import com.moodsphere.common.exception.ServiceException;
+import com.moodsphere.common.utils.SecurityUtils;
+import com.moodsphere.common.utils.StringUtils;
 import com.moodsphere.record.domain.entity.BizMoodRecord;
 import com.moodsphere.record.mapper.BizMoodRecordMapper;
+
 @Service
 public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
 {
@@ -44,7 +49,7 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
     {
         checkRecordId(recordId);
         Long userId = SecurityUtils.getUserId();
-        String username = SecurityUtils.getUsername();
+        String username = defaultUsername(SecurityUtils.getUsername());
         BizMoodRecord record = bizMoodRecordMapper.selectByIdAndUserId(recordId, userId);
         if (record == null)
         {
@@ -55,15 +60,15 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
             throw new ServiceException("记录内容为空，无法分析");
         }
 
-        Date now = new Date();
         long startMillis = System.currentTimeMillis();
         try
         {
             BizAiAnalysisResult result = buildMockResult(record);
+            Date now = new Date();
             result.setRecordId(recordId);
             result.setStatus(1);
             result.setDelFlag(0);
-            result.setAnalysisAt(new Date());
+            result.setAnalysisAt(now);
             result.setAnalysisCostMs((int) Math.max(1L, System.currentTimeMillis() - startMillis));
             result.setRequestId(UUID.randomUUID().toString().replace("-", ""));
             result.setProvider("mock-provider");
@@ -76,8 +81,10 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
             result.setUpdateTime(now);
 
             bizAiAnalysisResultMapper.upsertBizAiAnalysisResult(result);
-            bizMoodRecordMapper.updateAnalyzeResult(recordId, ANALYZE_STATUS_SUCCESS, result.getRiskLevel(), username, new Date());
-            return buildResultVo(recordId, ANALYZE_STATUS_SUCCESS, bizAiAnalysisResultMapper.selectByRecordId(recordId));
+            bizMoodRecordMapper.updateAnalyzeResult(recordId, ANALYZE_STATUS_SUCCESS, result.getRiskLevel(), username, now);
+
+            BizAiAnalysisResult latest = bizAiAnalysisResultMapper.selectByRecordId(recordId);
+            return buildResultVo(recordId, ANALYZE_STATUS_SUCCESS, latest == null ? result : latest);
         }
         catch (ServiceException e)
         {
@@ -118,6 +125,9 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         return vo;
     }
 
+    /**
+     * 当前阶段先用规则引擎模拟 AI 返回，保证链路可联调。
+     */
     private BizAiAnalysisResult buildMockResult(BizMoodRecord record)
     {
         String text = record.getContentText().trim();
@@ -152,52 +162,52 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
 
     private EmotionDecision detectEmotion(String text)
     {
-        if (containsAny(text, "suicide", "kill myself", "self harm"))
+        if (containsAny(text, "suicide", "kill myself", "self harm", "自杀", "想死", "轻生", "伤害自己"))
         {
-            return new EmotionDecision("sad", "anxious", 3, "high risk expression detected");
+            return new EmotionDecision("sad", "anxious", 3, "检测到高风险表达");
         }
-        if (containsAny(text, "anxious", "panic", "nervous", "worry"))
+        if (containsAny(text, "anxious", "panic", "nervous", "worry", "焦虑", "紧张", "担心", "恐慌"))
         {
-            return new EmotionDecision("anxious", "tired", 1, "anxiety tendency detected");
+            return new EmotionDecision("anxious", "tired", 1, "检测到焦虑倾向");
         }
-        if (containsAny(text, "sad", "depressed", "down"))
+        if (containsAny(text, "sad", "depressed", "down", "难过", "低落", "抑郁", "伤心"))
         {
-            return new EmotionDecision("sad", "lonely", 1, "low mood tendency detected");
+            return new EmotionDecision("sad", "lonely", 1, "检测到低落倾向");
         }
-        if (containsAny(text, "angry", "mad", "irritable"))
+        if (containsAny(text, "angry", "mad", "irritable", "生气", "烦躁", "愤怒"))
         {
-            return new EmotionDecision("irritable", "anxious", 1, "irritability tendency detected");
+            return new EmotionDecision("irritable", "anxious", 1, "检测到烦躁倾向");
         }
-        if (containsAny(text, "happy", "great", "good"))
+        if (containsAny(text, "happy", "great", "good", "开心", "愉快", "高兴"))
         {
-            return new EmotionDecision("happy", "calm", 0, "positive mood");
+            return new EmotionDecision("happy", "calm", 0, "积极情绪");
         }
-        return new EmotionDecision("calm", "confused", 0, "stable mood");
+        return new EmotionDecision("calm", "confused", 0, "情绪整体平稳");
     }
 
     private String detectScene(String text)
     {
-        if (containsAny(text, "work", "office", "meeting"))
+        if (containsAny(text, "work", "office", "meeting", "工作", "公司", "开会"))
         {
             return "work";
         }
-        if (containsAny(text, "study", "school", "exam"))
+        if (containsAny(text, "study", "school", "exam", "学习", "学校", "考试"))
         {
             return "study";
         }
-        if (containsAny(text, "family", "parent", "home"))
+        if (containsAny(text, "family", "parent", "home", "家庭", "父母", "家里"))
         {
             return "family";
         }
-        if (containsAny(text, "love", "relationship"))
+        if (containsAny(text, "love", "relationship", "感情", "恋爱"))
         {
             return "love";
         }
-        if (containsAny(text, "sleep", "insomnia"))
+        if (containsAny(text, "sleep", "insomnia", "睡眠", "失眠"))
         {
             return "sleep";
         }
-        if (containsAny(text, "health", "sick", "illness"))
+        if (containsAny(text, "health", "sick", "illness", "健康", "生病"))
         {
             return "health";
         }
@@ -232,28 +242,33 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
     private String buildSummary(EmotionDecision decision, String keywords)
     {
         StringBuilder summary = new StringBuilder();
-        summary.append("Primary emotion is ").append(decision.primaryEmotion).append(", secondary emotion is ")
-                .append(decision.secondaryEmotion).append(". ");
+        summary.append("主情绪为").append(decision.primaryEmotion)
+                .append("，次情绪为").append(decision.secondaryEmotion).append("。");
         if (StringUtils.isNotEmpty(keywords))
         {
-            summary.append("Keywords: ").append(keywords).append(". ");
+            summary.append(" 关键词：").append(keywords).append("。");
         }
         if (decision.riskLevel != null && decision.riskLevel > 0)
         {
-            summary.append("Potential risk signal detected, please pay attention to your condition and seek help in time.");
+            summary.append(" 检测到潜在风险信号，建议及时关注自身状态并寻求帮助。");
         }
         else
         {
-            summary.append("Overall emotional risk is low.");
+            summary.append(" 整体情绪风险较低。");
         }
         return summary.toString();
     }
 
+    /**
+     * 兼容中英文标点，提取最多 5 个关键词。
+     */
     private String extractKeywords(String text)
     {
-        String normalized = text.replaceAll("[\\r\\n\\t]", " ").replaceAll("[,?!;:]", " ");
+        String normalized = text.replaceAll("[\\r\\n\\t]", " ")
+                .replaceAll("[,?!;:，。！？；：、]", " ");
         String[] items = normalized.split("\\s+");
         List<String> words = new ArrayList<>();
+        Set<String> deduplicate = new LinkedHashSet<>();
         for (String item : items)
         {
             if (StringUtils.isEmpty(item))
@@ -261,11 +276,12 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
                 continue;
             }
             String word = item.trim();
-            if (word.length() <= 1 || words.contains(word))
+            if (word.length() <= 1 || deduplicate.contains(word))
             {
                 continue;
             }
-            words.add(word);
+            deduplicate.add(word);
+            words.add(word.length() > 12 ? word.substring(0, 12) : word);
             if (words.size() >= 5)
             {
                 break;
@@ -273,7 +289,7 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         }
         if (!words.isEmpty())
         {
-            return String.join(",", words);
+            return String.join("、", words);
         }
         return text.length() <= 12 ? text : text.substring(0, 12);
     }
@@ -316,6 +332,11 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         {
             throw new ServiceException("recordId无效");
         }
+    }
+
+    private String defaultUsername(String username)
+    {
+        return StringUtils.isEmpty(username) ? "system" : username;
     }
 
     private static class EmotionDecision

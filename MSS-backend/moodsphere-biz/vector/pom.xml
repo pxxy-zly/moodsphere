@@ -12,7 +12,7 @@
     <artifactId>vector</artifactId>
 
     <description>
-        鎯呯华鍚戦噺寤烘ā妯″潡
+        情绪向量建模模块
     </description>
 
     <dependencies>

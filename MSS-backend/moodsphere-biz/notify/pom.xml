@@ -12,7 +12,7 @@
     <artifactId>notify</artifactId>
 
     <description>
-        娑堟伅閫氱煡妯″潡
+        消息通知模块
     </description>
 
     <dependencies>

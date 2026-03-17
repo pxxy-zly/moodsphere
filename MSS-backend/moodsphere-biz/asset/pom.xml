@@ -12,7 +12,8 @@
     <artifactId>asset</artifactId>
 
     <description>
-        澶氭ā鎬佺礌鏉愮鐞嗘ā鍧?    </description>
+        多模态素材管理模块
+    </description>
 
     <dependencies>
         <dependency>

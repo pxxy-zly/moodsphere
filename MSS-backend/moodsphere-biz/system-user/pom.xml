@@ -12,7 +12,8 @@
     <artifactId>system-user</artifactId>
 
     <description>
-        鐢ㄦ埛娉ㄥ唽鐧诲綍涓庤处鍙峰畨鍏ㄦā鍧?    </description>
+        用户注册登录与账户安全模块
+    </description>
 
     <dependencies>
         <dependency>

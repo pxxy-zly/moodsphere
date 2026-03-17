@@ -12,11 +12,10 @@ import com.moodsphere.record.domain.dto.MoodRecordCreateBody;
 import com.moodsphere.record.domain.entity.BizMoodRecord;
 import com.moodsphere.record.mapper.BizMoodRecordMapper;
 import com.moodsphere.record.service.IMoodRecordService;
+
 @Service
 public class MoodRecordServiceImpl implements IMoodRecordService
 {
-    private static final int RECORD_STATUS_DRAFT = 0;
-
     private static final int RECORD_STATUS_SUBMITTED = 1;
 
     private static final int ANALYZE_STATUS_PENDING = 0;
@@ -33,17 +32,25 @@ public class MoodRecordServiceImpl implements IMoodRecordService
     @Override
     public Long createRecord(MoodRecordCreateBody body)
     {
-        if (body == null || StringUtils.isEmpty(body.getContentText()))
+        if (body == null)
+        {
+            throw new ServiceException("请求参数不能为空");
+        }
+        String contentText = body.getContentText() == null ? null : body.getContentText().trim();
+        if (StringUtils.isEmpty(contentText))
         {
             throw new ServiceException("记录文本不能为空");
         }
+
         Long userId = SecurityUtils.getUserId();
+        String username = defaultUsername(SecurityUtils.getUsername());
         Date now = new Date();
+
         BizMoodRecord record = new BizMoodRecord();
         record.setUserId(userId);
         record.setSourceType(1);
         record.setRecordType(0);
-        record.setContentText(body.getContentText().trim());
+        record.setContentText(contentText);
         record.setEmotionIntensity(normalizeIntensity(body.getEmotionIntensity()));
         record.setRecordTime(body.getRecordTime() == null ? now : body.getRecordTime());
         record.setRecordStatus(RECORD_STATUS_SUBMITTED);
@@ -57,10 +64,11 @@ public class MoodRecordServiceImpl implements IMoodRecordService
         record.setLatitude(body.getLatitude());
         record.setRiskLevel(0);
         record.setDelFlag(0);
-        record.setCreateBy(SecurityUtils.getUsername());
+        record.setCreateBy(username);
         record.setCreateTime(now);
-        record.setUpdateBy(SecurityUtils.getUsername());
+        record.setUpdateBy(username);
         record.setUpdateTime(now);
+
         int rows = bizMoodRecordMapper.insertBizMoodRecord(record);
         if (rows <= 0 || record.getId() == null)
         {
@@ -92,7 +100,7 @@ public class MoodRecordServiceImpl implements IMoodRecordService
     {
         checkRecordId(recordId);
         int rows = bizMoodRecordMapper.updateSubmitStatus(recordId, SecurityUtils.getUserId(), RECORD_STATUS_SUBMITTED,
-                ANALYZE_STATUS_PENDING, SecurityUtils.getUsername(), new Date());
+                ANALYZE_STATUS_PENDING, defaultUsername(SecurityUtils.getUsername()), new Date());
         if (rows <= 0)
         {
             throw new ServiceException("记录不存在或无权限");
@@ -107,7 +115,9 @@ public class MoodRecordServiceImpl implements IMoodRecordService
         }
     }
 
-
+    /**
+     * 统一将情绪强度限制在 1~10 区间。
+     */
     private int normalizeIntensity(Integer intensity)
     {
         if (intensity == null)
@@ -116,5 +126,9 @@ public class MoodRecordServiceImpl implements IMoodRecordService
         }
         return Math.max(MIN_INTENSITY, Math.min(MAX_INTENSITY, intensity));
     }
-}
 
+    private String defaultUsername(String username)
+    {
+        return StringUtils.isEmpty(username) ? "system" : username;
+    }
+}

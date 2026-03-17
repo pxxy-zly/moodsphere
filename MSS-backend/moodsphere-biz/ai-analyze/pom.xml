@@ -12,7 +12,7 @@
     <artifactId>ai-analyze</artifactId>
 
     <description>
-        AI鎯呯华鍒嗘瀽妯″潡
+        AI情绪分析模块
     </description>
 
     <dependencies>

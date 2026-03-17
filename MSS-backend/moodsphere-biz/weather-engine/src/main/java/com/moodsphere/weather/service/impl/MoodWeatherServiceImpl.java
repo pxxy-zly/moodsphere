@@ -4,12 +4,15 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import com.alibaba.fastjson2.JSONObject;
 import com.moodsphere.common.exception.ServiceException;
 import com.moodsphere.common.utils.SecurityUtils;
+import com.moodsphere.common.utils.StringUtils;
 import com.moodsphere.record.domain.entity.BizMoodRecord;
 import com.moodsphere.record.mapper.BizMoodRecordMapper;
 import com.moodsphere.vector.domain.entity.BizEmotionVector;
@@ -20,6 +23,7 @@ import com.moodsphere.weather.domain.vo.DailyVectorAggregateVo;
 import com.moodsphere.weather.mapper.BizWeatherMappingMapper;
 import com.moodsphere.weather.mapper.BizWeatherSnapshotMapper;
 import com.moodsphere.weather.service.IMoodWeatherService;
+
 @Service
 public class MoodWeatherServiceImpl implements IMoodWeatherService
 {
@@ -40,18 +44,21 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
     public BizWeatherMapping generateWeather(Long recordId)
     {
         checkRecordId(recordId);
+
         Long userId = SecurityUtils.getUserId();
-        String username = SecurityUtils.getUsername();
+        String username = defaultUsername(SecurityUtils.getUsername());
         BizMoodRecord record = bizMoodRecordMapper.selectByIdAndUserId(recordId, userId);
         if (record == null)
         {
             throw new ServiceException("记录不存在或无权限");
         }
+
         BizEmotionVector vector = bizEmotionVectorMapper.selectByRecordId(recordId);
         if (vector == null)
         {
-            throw new ServiceException("璇峰厛鐢熸垚鎯呯华鍚戦噺");
+            throw new ServiceException("请先生成情绪向量");
         }
+
         WeatherProfile profile = buildWeatherProfile(
                 safeDouble(vector.getValence()),
                 safeDouble(vector.getArousal()),
@@ -128,6 +135,7 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
                 safeDouble(aggregate.getAvgHope()),
                 safeDouble(aggregate.getAvgConfidence()));
 
+        Date now = new Date();
         BizWeatherSnapshot snapshot = new BizWeatherSnapshot();
         snapshot.setUserId(userId);
         snapshot.setSnapshotDate(snapshotDate);
@@ -147,9 +155,9 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
         snapshot.setRecordCount(aggregate.getRecordCount());
         snapshot.setDelFlag(0);
         snapshot.setCreateBy(username);
-        snapshot.setCreateTime(new Date());
+        snapshot.setCreateTime(now);
         snapshot.setUpdateBy(username);
-        snapshot.setUpdateTime(new Date());
+        snapshot.setUpdateTime(now);
         bizWeatherSnapshotMapper.upsertBizWeatherSnapshot(snapshot);
     }
 
@@ -229,6 +237,12 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
             throw new ServiceException("recordId无效");
         }
     }
+
+    private String defaultUsername(String username)
+    {
+        return StringUtils.isEmpty(username) ? "system" : username;
+    }
+
     private static class WeatherProfile
     {
         private final String weatherCode;
@@ -270,4 +284,3 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
         }
     }
 }
-

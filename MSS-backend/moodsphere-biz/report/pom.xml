@@ -12,7 +12,7 @@
     <artifactId>report</artifactId>
 
     <description>
-        鎯呯华鎶ュ憡妯″潡
+        情绪报告模块
     </description>
 
     <dependencies>

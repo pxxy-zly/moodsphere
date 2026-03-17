@@ -41,8 +41,7 @@ import com.moodsphere.system.user.mapper.BizUserInfoMapper;
 import com.moodsphere.system.user.service.IWechatMiniappAuthService;
 
 /**
- * 瀵邦喕淇婄亸蹇曗柤鎼村繗顓荤拠浣规箛閸斺€崇杽閻? *
- * @author ruoyi
+ * 微信小程序登录认证服务实现。
  */
 @Service
 public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
@@ -92,28 +91,36 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         Date now = new Date();
         String loginIp = IpUtils.getIpAddr();
         BizUserAuth userAuth = bizUserAuthMapper.selectByAuthTypeAndOpenid(AUTH_TYPE_WECHAT_MP, session.getOpenid());
+
         boolean firstLogin = false;
         Long userId;
-
         if (userAuth == null)
         {
             firstLogin = true;
             SysUser newUser = buildNewUser(loginBody, session.getOpenid());
             sysUserService.registerUser(newUser);
+
             userId = newUser.getUserId();
             if (userId == null)
             {
-                throw new ServiceException("閸掓稑缂撶化鑽ょ埠閻劍鍩涙径杈Е");
+                throw new ServiceException("注册用户失败，未返回用户ID");
             }
+
             insertDefaultRole(userId);
+
             userAuth = buildUserAuth(userId, session, now, loginIp);
             bizUserAuthMapper.insertBizUserAuth(userAuth);
+
             BizUserInfo userInfo = buildUserInfo(userId, loginBody);
             bizUserInfoMapper.insertBizUserInfo(userInfo);
         }
         else
         {
             userId = userAuth.getUserId();
+            if (userId == null)
+            {
+                throw new ServiceException("用户授权数据异常，请联系管理员");
+            }
             userAuth.setSessionKey(session.getSessionKey());
             userAuth.setUnionid(session.getUnionid());
             userAuth.setLastLoginTime(now);
@@ -126,8 +133,9 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         SysUser sysUser = sysUserService.selectUserById(userId);
         if (sysUser == null)
         {
-            throw new ServiceException("閻ц缍嶉悽銊﹀煕娑撳秴鐡ㄩ崷?);
+            throw new ServiceException("登录失败，用户不存在");
         }
+
         Set<String> roleKeys = sysRoleService.selectRolePermissionByUserId(userId);
         Set<String> permissions = permissionService.getMenuPermission(sysUser);
 
@@ -150,6 +158,11 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
     public WechatMiniappLoginVo getCurrentUserInfo()
     {
         LoginUser loginUser = SecurityUtils.getLoginUser();
+        if (loginUser == null)
+        {
+            throw new ServiceException("未获取到当前登录信息");
+        }
+
         Set<String> roleKeys = sysRoleService.selectRolePermissionByUserId(loginUser.getUserId());
         WechatMiniappLoginVo result = new WechatMiniappLoginVo();
         result.setUser(loginUser.getUser());
@@ -163,37 +176,45 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
 
     private void validateLoginBody(WechatMiniappLoginBody loginBody)
     {
-        if (loginBody == null || StringUtils.isEmpty(loginBody.getCode()))
+        if (loginBody == null)
         {
-            throw new ServiceException("瀵邦喕淇婇惂璇茬秿code娑撳秷鍏樻稉铏光敄");
+            throw new ServiceException("微信小程序登录失败，请求参数不能为空");
         }
+        String code = loginBody.getCode() == null ? null : loginBody.getCode().trim();
+        if (StringUtils.isEmpty(code))
+        {
+            throw new ServiceException("微信小程序登录失败，code不能为空");
+        }
+        loginBody.setCode(code);
     }
 
     private WechatSession exchangeCode(String code)
     {
         if (StringUtils.isEmpty(wechatMiniappProperties.getAppid()) || StringUtils.isEmpty(wechatMiniappProperties.getSecret()))
         {
-            throw new ServiceException("瀵邦喕淇婄亸蹇曗柤鎼村繘鍘ょ純顔荤瑝鐎瑰本鏆?);
+            throw new ServiceException("微信小程序配置不完整，请检查appid和secret");
         }
 
         String resp = requestCode2Session(code);
         if (StringUtils.isEmpty(resp))
         {
-            throw new ServiceException("鐠嬪啰鏁ゅ顔讳繆鐠併倛鐦夐張宥呭婢惰精瑙?);
+            throw new ServiceException("调用微信接口失败，未获取到响应");
         }
+
         JSONObject jsonObject = JSON.parseObject(resp);
         Integer errcode = jsonObject.getInteger("errcode");
         if (errcode != null && errcode != 0)
         {
             String errmsg = jsonObject.getString("errmsg");
-            throw new ServiceException("瀵邦喕淇婇惂璇茬秿婢惰精瑙? " + (StringUtils.isEmpty(errmsg) ? "閺堫亞鐓￠柨娆掝嚖" : errmsg));
+            throw new ServiceException("微信登录失败：" + (StringUtils.isEmpty(errmsg) ? "微信接口返回错误" : errmsg));
         }
 
         String openid = jsonObject.getString("openid");
         if (StringUtils.isEmpty(openid))
         {
-            throw new ServiceException("瀵邦喕淇婇惂璇茬秿婢惰精瑙? 閺堫亣骞忛崣鏍у煂openid");
+            throw new ServiceException("微信登录失败：未获取到openid");
         }
+
         WechatSession session = new WechatSession();
         session.setOpenid(openid);
         session.setUnionid(jsonObject.getString("unionid"));
@@ -210,6 +231,7 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
                     + "&secret=" + URLEncoder.encode(wechatMiniappProperties.getSecret(), StandardCharsets.UTF_8)
                     + "&js_code=" + URLEncoder.encode(code, StandardCharsets.UTF_8)
                     + "&grant_type=authorization_code";
+
             URL url = new URL(WECHAT_CODE2SESSION_URL + "?" + query);
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
@@ -222,6 +244,7 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
             {
                 return null;
             }
+
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8)))
             {
                 StringBuilder result = new StringBuilder();
@@ -235,7 +258,7 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         }
         catch (Exception e)
         {
-            throw new ServiceException("鐠嬪啰鏁ゅ顔讳繆鐠併倛鐦夐張宥呭瀵倸鐖?);
+            throw new ServiceException("调用微信接口失败，请稍后重试");
         }
         finally
         {
@@ -300,11 +323,11 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         SysRole defaultRole = sysRoleService.selectRoleById(DEFAULT_ROLE_ID);
         if (defaultRole == null || !"0".equals(defaultRole.getStatus()))
         {
-            throw new ServiceException("姒涙顓荤憴鎺曞娑撳秴褰查悽顭掔礉鐠囬攱顥呴弻顧竜le_id=100閻ㄥ垷pp_user鐟欐帟澹婇柊宥囩枂");
+            throw new ServiceException("默认角色无效，请检查角色ID=100是否存在且状态正常");
         }
         if (!DEFAULT_ROLE_KEY_APP_USER.equals(defaultRole.getRoleKey()))
         {
-            throw new ServiceException("姒涙顓荤憴鎺曞闁板秶鐤嗛柨娆掝嚖閿涘ole_id=100韫囧懘銆忕€电懓绨瞐pp_user");
+            throw new ServiceException("默认角色配置错误，请检查角色ID=100的roleKey是否为app_user");
         }
         sysUserService.insertUserAuth(userId, new Long[] { DEFAULT_ROLE_ID });
     }
@@ -315,7 +338,12 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         {
             return Collections.singletonList(DEFAULT_ROLE_KEY_APP_USER);
         }
-        return roleKeys.stream().filter(StringUtils::isNotEmpty).collect(Collectors.toList());
+        List<String> roleList = roleKeys.stream().filter(StringUtils::isNotEmpty).collect(Collectors.toList());
+        if (roleList.isEmpty())
+        {
+            return Collections.singletonList(DEFAULT_ROLE_KEY_APP_USER);
+        }
+        return roleList;
     }
 
     private String buildUserName(String openid)
@@ -330,7 +358,7 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         {
             return DEFAULT_NICK_NAME;
         }
-        return loginBody.getNickName();
+        return loginBody.getNickName().trim();
     }
 
     private String buildAvatar(WechatMiniappLoginBody loginBody)
@@ -339,7 +367,7 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         {
             return DEFAULT_AVATAR;
         }
-        return loginBody.getAvatarUrl();
+        return loginBody.getAvatarUrl().trim();
     }
 
     private static class WechatSession

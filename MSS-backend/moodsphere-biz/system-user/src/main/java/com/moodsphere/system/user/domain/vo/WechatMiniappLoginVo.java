@@ -2,48 +2,51 @@ package com.moodsphere.system.user.domain.vo;
 
 import java.util.List;
 import java.util.Set;
+
 import com.moodsphere.common.core.domain.entity.SysUser;
 
 /**
- * 瀵邦喕淇婄亸蹇曗柤鎼村繋绔撮柨顔炬瑜版洖鎼锋惔鏂款嚠鐠? *
- * @author ruoyi
+ * 微信小程序登录返回对象。
  */
 public class WechatMiniappLoginVo
 {
     /**
-     * 閻ц缍?token
+     * 登录 token。
      */
     private String token;
 
     /**
-     * 瑜版挸澧犻悽銊﹀煕
+     * 用户信息。
      */
     private SysUser user;
 
     /**
-     * 瑜版挸澧犵憴鎺曞閺嶅洩鐦戦崚妤勩€?     */
+     * 角色标识列表。
+     */
     private List<String> roles;
 
     /**
-     * 瑜版挸澧犻弶鍐閺嶅洩鐦戦梿鍡楁値
+     * 权限标识集合。
      */
     private Set<String> permissions;
 
     /**
-     * 閻ц缍嶇拋銈堢槈缁鐎?     */
+     * 认证类型。
+     */
     private String authType;
 
     /**
-     * 瀵邦喕淇?openid
+     * 小程序 openid。
      */
     private String openid;
 
     /**
-     * 閺勵垰鎯佹＃鏍偧閻ц缍?     */
+     * 是否首次登录。
+     */
     private Boolean firstLogin;
 
     /**
-     * 閺勵垰鎯侀棁鈧憰浣虹拨鐎规碍澧滈張鍝勫娇
+     * 是否需要绑定手机号。
      */
     private Boolean needBindPhone;
 

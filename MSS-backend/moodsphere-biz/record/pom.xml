@@ -12,7 +12,8 @@
     <artifactId>record</artifactId>
 
     <description>
-        鎯呯华璁板綍涓绘祦绋嬫ā鍧?    </description>
+        情绪记录主流程模块
+    </description>
 
     <dependencies>
         <dependency>

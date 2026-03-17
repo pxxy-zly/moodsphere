@@ -13,7 +13,7 @@
     <packaging>pom</packaging>
 
     <description>
-        biz涓氬姟鑱氬悎妯″潡
+        biz业务聚合模块
     </description>
 
     <modules>

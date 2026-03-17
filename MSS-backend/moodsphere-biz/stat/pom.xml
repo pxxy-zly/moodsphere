@@ -12,7 +12,7 @@
     <artifactId>stat</artifactId>
 
     <description>
-        缁熻杩愯惀妯″潡
+        统计运营模块
     </description>
 
     <dependencies>

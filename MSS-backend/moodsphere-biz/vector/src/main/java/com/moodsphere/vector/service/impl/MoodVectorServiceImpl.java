@@ -3,23 +3,28 @@ package com.moodsphere.vector.service.impl;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Date;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import com.alibaba.fastjson2.JSONObject;
+import com.moodsphere.analyze.domain.entity.BizAiAnalysisResult;
+import com.moodsphere.analyze.mapper.BizAiAnalysisResultMapper;
 import com.moodsphere.common.exception.ServiceException;
 import com.moodsphere.common.utils.SecurityUtils;
 import com.moodsphere.common.utils.StringUtils;
-import com.moodsphere.analyze.domain.entity.BizAiAnalysisResult;
-import com.moodsphere.analyze.mapper.BizAiAnalysisResultMapper;
 import com.moodsphere.record.domain.entity.BizMoodRecord;
 import com.moodsphere.record.mapper.BizMoodRecordMapper;
 import com.moodsphere.vector.domain.entity.BizEmotionVector;
 import com.moodsphere.vector.mapper.BizEmotionVectorMapper;
 import com.moodsphere.vector.service.IMoodVectorService;
+
 @Service
 public class MoodVectorServiceImpl implements IMoodVectorService
 {
+    private static final int ANALYZE_STATUS_FAIL = 2;
+
     @Autowired
     private BizMoodRecordMapper bizMoodRecordMapper;
 
@@ -34,23 +39,29 @@ public class MoodVectorServiceImpl implements IMoodVectorService
     public BizEmotionVector buildVector(Long recordId)
     {
         checkRecordId(recordId);
-        BizMoodRecord record = bizMoodRecordMapper.selectByIdAndUserId(recordId, SecurityUtils.getUserId());
+        Long userId = SecurityUtils.getUserId();
+        String username = defaultUsername(SecurityUtils.getUsername());
+
+        BizMoodRecord record = bizMoodRecordMapper.selectByIdAndUserId(recordId, userId);
         if (record == null)
         {
             throw new ServiceException("记录不存在或无权限");
         }
-        if (record.getAnalyzeStatus() != null && record.getAnalyzeStatus() == 2)
+        if (record.getAnalyzeStatus() != null && record.getAnalyzeStatus() == ANALYZE_STATUS_FAIL)
         {
             throw new ServiceException("AI分析失败，无法构建向量");
         }
+
         BizAiAnalysisResult analysisResult = bizAiAnalysisResultMapper.selectByRecordId(recordId);
         if (analysisResult == null)
         {
-            throw new ServiceException("璇峰厛瀹屾垚AI鍒嗘瀽");
+            throw new ServiceException("请先完成AI分析");
         }
+
         VectorTemplate template = templateByEmotion(analysisResult.getPrimaryEmotion());
         double intensityRate = normalizeIntensityRate(record.getEmotionIntensity());
 
+        Date now = new Date();
         BizEmotionVector vector = new BizEmotionVector();
         vector.setRecordId(recordId);
         vector.setValence(dec(template.valence + (template.valence >= 0.5 ? 1 : -1) * (intensityRate - 0.5D) * 0.08D));
@@ -65,13 +76,18 @@ public class MoodVectorServiceImpl implements IMoodVectorService
         vector.setDimensionJson(buildDimensionJson(analysisResult, intensityRate));
         vector.setConfidenceScore(dec(calculateConfidenceScore(analysisResult.getRiskLevel())));
         vector.setDelFlag(0);
-        vector.setCreateBy(SecurityUtils.getUsername());
-        vector.setCreateTime(new Date());
-        vector.setUpdateBy(SecurityUtils.getUsername());
-        vector.setUpdateTime(new Date());
+        vector.setCreateBy(username);
+        vector.setCreateTime(now);
+        vector.setUpdateBy(username);
+        vector.setUpdateTime(now);
 
         bizEmotionVectorMapper.upsertBizEmotionVector(vector);
-        return bizEmotionVectorMapper.selectByRecordId(recordId);
+        BizEmotionVector latest = bizEmotionVectorMapper.selectByRecordId(recordId);
+        if (latest == null)
+        {
+            throw new ServiceException("情绪向量生成失败");
+        }
+        return latest;
     }
 
     @Override
@@ -154,6 +170,12 @@ public class MoodVectorServiceImpl implements IMoodVectorService
             throw new ServiceException("recordId无效");
         }
     }
+
+    private String defaultUsername(String username)
+    {
+        return StringUtils.isEmpty(username) ? "system" : username;
+    }
+
     private static class VectorTemplate
     {
         private final double valence;
@@ -194,4 +216,3 @@ public class MoodVectorServiceImpl implements IMoodVectorService
         }
     }
 }
-

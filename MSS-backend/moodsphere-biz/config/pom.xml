@@ -12,7 +12,7 @@
     <artifactId>config</artifactId>
 
     <description>
-        涓氬姟閰嶇疆涓績妯″潡
+        业务配置中心模块
     </description>
 
     <dependencies>

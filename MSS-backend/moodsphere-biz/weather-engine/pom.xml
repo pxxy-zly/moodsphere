@@ -12,7 +12,7 @@
     <artifactId>weather-engine</artifactId>
 
     <description>
-        鎯呯华澶╂皵鏄犲皠寮曟搸妯″潡
+        情绪天气映射引擎模块
     </description>
 
     <dependencies>
