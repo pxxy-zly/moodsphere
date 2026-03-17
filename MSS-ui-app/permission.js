@@ -1,36 +1,41 @@
 import { getToken } from '@/utils/auth'
 
-// 登录页面
-const loginPage = "/pages/login"
-  
+const loginPage = '/pages/auth/login'
+const homePage = '/pages/weather/index'
+
 // 页面白名单
 const whiteList = [
-  '/pages/login', '/pages/register', '/pages/common/webview/index'
+  loginPage,
+  '/pages/common/webview/index',
+  '/sub-auth/privacy',
+  '/sub-auth/terms',
+  '/sub-auth/forgot',
+  '/sub-auth/guide'
 ]
 
-// 检查地址白名单
 function checkWhite(url) {
-  const path = url.split('?')[0]
+  const path = (url || '').split('?')[0]
   return whiteList.indexOf(path) !== -1
 }
 
-// 页面跳转验证拦截器
-let list = ["navigateTo", "redirectTo", "reLaunch", "switchTab"]
-list.forEach(item => {
+const interceptors = ['navigateTo', 'redirectTo', 'reLaunch', 'switchTab']
+interceptors.forEach(item => {
   uni.addInterceptor(item, {
     invoke(to) {
+      const path = (to.url || '').split('?')[0]
       if (getToken()) {
-        if (to.url === loginPage) {
-          uni.reLaunch({ url: "/" })
+        if (path === loginPage) {
+          uni.switchTab({ url: homePage })
+          return false
         }
         return true
-      } else {
-        if (checkWhite(to.url)) {
-          return true
-        }
-        uni.reLaunch({ url: loginPage })
-        return false
       }
+
+      if (checkWhite(to.url)) {
+        return true
+      }
+      uni.reLaunch({ url: loginPage })
+      return false
     },
     fail(err) {
       console.log(err)

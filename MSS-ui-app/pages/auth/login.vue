@@ -5,16 +5,16 @@
       <text class="title">MoodSphere</text>
     </view>
 
-    <view class="desc">寰俊鎺堟潈鍚庡嵆鍙竴閿櫥褰?/view>
+    <view class="desc">微信授权后即可一键登录</view>
 
     <view class="action-btn">
-      <button @click="handleWechatLogin" class="login-btn cu-btn block bg-green lg round">寰俊涓€閿櫥褰?/button>
+      <button @click="handleWechatLogin" class="login-btn cu-btn block bg-green lg round">微信一键登录</button>
     </view>
 
     <view class="agreement text-center">
-      <text class="text-grey1">鐧诲綍鍗充唬琛ㄥ悓鎰?/text>
-      <text @click="handleUserAgreement" class="text-blue">銆婄敤鎴锋湇鍔″崗璁€?/text>
-      <text @click="handlePrivacy" class="text-blue">銆婇殣绉佸崗璁€?/text>
+      <text class="text-grey1">登录即代表同意</text>
+      <text @click="handleUserAgreement" class="text-blue">《用户服务协议》</text>
+      <text @click="handlePrivacy" class="text-blue">《隐私协议》</text>
     </view>
   </view>
 </template>
@@ -30,38 +30,36 @@ export default {
   },
   onLoad() {
     if (getToken()) {
-      this.$tab.reLaunch('/pages/index')
+      this.$tab.switchTab('/pages/weather/index')
     }
   },
   methods: {
     handlePrivacy() {
-      const site = this.globalConfig.appInfo.agreements[0]
-      this.$tab.navigateTo(`/pages/common/webview/index?title=${site.title}&url=${site.url}`)
+      this.$tab.navigateTo('/sub-auth/privacy')
     },
     handleUserAgreement() {
-      const site = this.globalConfig.appInfo.agreements[1]
-      this.$tab.navigateTo(`/pages/common/webview/index?title=${site.title}&url=${site.url}`)
+      this.$tab.navigateTo('/sub-auth/terms')
     },
     handleWechatLogin() {
       // #ifndef MP-WEIXIN
-      this.$modal.msg('璇峰湪寰俊灏忕▼搴忕幆澧冧娇鐢ㄥ井淇′竴閿櫥褰?)
+      this.$modal.msg('请在微信小程序环境使用微信一键登录')
       return
       // #endif
 
-      this.$modal.loading('鐧诲綍涓紝璇风◢鍊?..')
+      this.$modal.loading('登录中，请稍候...')
       uni.login({
         provider: 'weixin',
         success: res => {
           if (!res.code) {
             this.$modal.closeLoading()
-            this.$modal.msgError('鏈幏鍙栧埌寰俊鐧诲綍鍑瘉')
+            this.$modal.msgError('未获取到微信登录凭证')
             return
           }
           this.doWechatLogin(res.code)
         },
         fail: () => {
           this.$modal.closeLoading()
-          this.$modal.msgError('寰俊鐧诲綍鎺堟潈澶辫触')
+          this.$modal.msgError('微信登录授权失败')
         }
       })
     },
@@ -70,10 +68,10 @@ export default {
         return this.$store.dispatch('GetInfo')
       }).then(() => {
         this.$modal.closeLoading()
-        this.$tab.reLaunch('/pages/index')
+        this.$tab.switchTab('/pages/weather/index')
       }).catch(error => {
         this.$modal.closeLoading()
-        const message = (error && (error.msg || error.message)) ? (error.msg || error.message) : '寰俊鐧诲綍澶辫触锛岃绋嶅悗閲嶈瘯'
+        const message = (error && (error.msg || error.message)) ? (error.msg || error.message) : '微信登录失败，请稍后重试'
         this.$modal.msgError(message)
       })
     }

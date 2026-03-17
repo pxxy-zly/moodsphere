@@ -1,37 +1,98 @@
 {
   "pages": [
     {
-      "path": "pages/login",
+      "path": "pages/auth/login",
       "style": {
-        "navigationBarTitleText": "鐧诲綍"
+        "navigationBarTitleText": "微信登录"
       }
     },
     {
-      "path": "pages/register",
+      "path": "pages/weather/index",
       "style": {
-        "navigationBarTitleText": "娉ㄥ唽"
+        "navigationBarTitleText": "情绪天气"
       }
     },
     {
-      "path": "pages/index",
+      "path": "pages/record/index",
       "style": {
-        "navigationBarTitleText": "MoodSphere",
-        "navigationStyle": "custom"
+        "navigationBarTitleText": "记录"
+      }
+    },
+    {
+      "path": "pages/globe/index",
+      "style": {
+        "navigationBarTitleText": "星球"
+      }
+    },
+    {
+      "path": "pages/report/index",
+      "style": {
+        "navigationBarTitleText": "报告"
+      }
+    },
+    {
+      "path": "pages/mine/index",
+      "style": {
+        "navigationBarTitleText": "我的"
       }
     },
     {
       "path": "pages/common/webview/index",
       "style": {
-        "navigationBarTitleText": "娴忚缃戦〉"
+        "navigationBarTitleText": "浏览网页"
       }
     },
     {
       "path": "pages/common/textview/index",
       "style": {
-        "navigationBarTitleText": "娴忚鏂囨湰"
+        "navigationBarTitleText": "浏览文本"
       }
     }
   ],
+  "subPackages": [
+    {
+      "root": "sub-auth",
+      "pages": [
+        { "path": "guide", "style": { "navigationBarTitleText": "新手引导" } },
+        { "path": "forgot", "style": { "navigationBarTitleText": "找回账号" } },
+        { "path": "privacy", "style": { "navigationBarTitleText": "隐私协议" } },
+        { "path": "terms", "style": { "navigationBarTitleText": "用户协议" } }
+      ]
+    },
+    {
+      "root": "sub-weather",
+      "pages": [
+        { "path": "history", "style": { "navigationBarTitleText": "历史天气" } },
+        { "path": "share", "style": { "navigationBarTitleText": "天气分享" } },
+        { "path": "compare", "style": { "navigationBarTitleText": "情绪对比" } }
+      ]
+    },
+    {
+      "root": "sub-globe",
+      "pages": [
+        { "path": "region-detail", "style": { "navigationBarTitleText": "区域详情" } },
+        { "path": "my-projection", "style": { "navigationBarTitleText": "我的投影" } },
+        { "path": "ranking", "style": { "navigationBarTitleText": "情绪排行" } }
+      ]
+    },
+    {
+      "root": "sub-mine",
+      "pages": [
+        { "path": "privacy", "style": { "navigationBarTitleText": "隐私设置" } },
+        { "path": "remind", "style": { "navigationBarTitleText": "提醒设置" } },
+        { "path": "feedback", "style": { "navigationBarTitleText": "帮助反馈" } },
+        { "path": "achievement", "style": { "navigationBarTitleText": "勋章成就" } },
+        { "path": "about", "style": { "navigationBarTitleText": "关于我们" } },
+        { "path": "export", "style": { "navigationBarTitleText": "数据导出" } }
+      ]
+    }
+  ],
+  "preloadRule": {
+    "pages/weather/index": {
+      "network": "all",
+      "packages": ["sub-weather"]
+    }
+  },
   "tabBar": {
     "color": "#666666",
     "selectedColor": "#1989fa",
@@ -39,10 +100,34 @@
     "backgroundColor": "#ffffff",
     "list": [
       {
-        "pagePath": "pages/index",
+        "pagePath": "pages/weather/index",
         "iconPath": "static/images/tabbar/home.png",
         "selectedIconPath": "static/images/tabbar/home_.png",
-        "text": "棣栭〉"
+        "text": "天气"
+      },
+      {
+        "pagePath": "pages/record/index",
+        "iconPath": "static/images/tabbar/work.png",
+        "selectedIconPath": "static/images/tabbar/work_.png",
+        "text": "记录"
+      },
+      {
+        "pagePath": "pages/globe/index",
+        "iconPath": "static/images/tabbar/home.png",
+        "selectedIconPath": "static/images/tabbar/home_.png",
+        "text": "星球"
+      },
+      {
+        "pagePath": "pages/report/index",
+        "iconPath": "static/images/tabbar/work.png",
+        "selectedIconPath": "static/images/tabbar/work_.png",
+        "text": "报告"
+      },
+      {
+        "pagePath": "pages/mine/index",
+        "iconPath": "static/images/tabbar/mine.png",
+        "selectedIconPath": "static/images/tabbar/mine_.png",
+        "text": "我的"
       }
     ]
   },
