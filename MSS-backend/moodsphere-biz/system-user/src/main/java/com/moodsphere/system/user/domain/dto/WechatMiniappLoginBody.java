@@ -1,34 +1,32 @@
 package com.moodsphere.system.user.domain.dto;
 
 /**
- * 微信小程序一键登录请求参数
- *
+ * 瀵邦喕淇婄亸蹇曗柤鎼村繋绔撮柨顔炬瑜版洝顕Ч鍌氬棘閺? *
  * @author ruoyi
  */
 public class WechatMiniappLoginBody
 {
     /**
-     * uni.login 获取的临时 code
+     * uni.login 閼惧嘲褰囬惃鍕閺?code
      */
     private String code;
 
     /**
-     * 微信加密用户数据
+     * 瀵邦喕淇婇崝鐘茬槕閻劍鍩涢弫鐗堝祦
      */
     private String encryptedData;
 
     /**
-     * 加密向量
+     * 閸旂姴鐦戦崥鎴﹀櫤
      */
     private String iv;
 
     /**
-     * 客户端上送昵称
-     */
+     * 鐎广垺鍩涚粩顖欑瑐闁焦妯€缁?     */
     private String nickName;
 
     /**
-     * 客户端上送头像地址
+     * 鐎广垺鍩涚粩顖欑瑐闁礁銇旈崓蹇撴勾閸р偓
      */
     private String avatarUrl;
 

@@ -13,22 +13,22 @@
     <packaging>pom</packaging>
 
     <description>
-        biz业务聚合模块
+        biz涓氬姟鑱氬悎妯″潡
     </description>
 
     <modules>
         <module>system-user</module>
-        <module>mood-record</module>
-        <module>mood-asset</module>
-        <module>mood-ai-analyze</module>
-        <module>mood-vector</module>
-        <module>mood-weather-engine</module>
-        <module>mood-report</module>
-        <module>mood-globe</module>
-        <module>mood-risk</module>
-        <module>mood-notify</module>
-        <module>mood-config</module>
-        <module>mood-stat</module>
+        <module>record</module>
+        <module>asset</module>
+        <module>ai-analyze</module>
+        <module>vector</module>
+        <module>weather-engine</module>
+        <module>report</module>
+        <module>globe</module>
+        <module>risk</module>
+        <module>notify</module>
+        <module>config</module>
+        <module>stat</module>
     </modules>
 
 </project>

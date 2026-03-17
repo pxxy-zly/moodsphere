@@ -186,57 +186,57 @@
             </dependency>
             <dependency>
                 <groupId>com.moodsphere</groupId>
-                <artifactId>mood-record</artifactId>
+                <artifactId>record</artifactId>
                 <version>${moodsphere.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moodsphere</groupId>
-                <artifactId>mood-asset</artifactId>
+                <artifactId>asset</artifactId>
                 <version>${moodsphere.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moodsphere</groupId>
-                <artifactId>mood-ai-analyze</artifactId>
+                <artifactId>ai-analyze</artifactId>
                 <version>${moodsphere.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moodsphere</groupId>
-                <artifactId>mood-vector</artifactId>
+                <artifactId>vector</artifactId>
                 <version>${moodsphere.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moodsphere</groupId>
-                <artifactId>mood-weather-engine</artifactId>
+                <artifactId>weather-engine</artifactId>
                 <version>${moodsphere.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moodsphere</groupId>
-                <artifactId>mood-report</artifactId>
+                <artifactId>report</artifactId>
                 <version>${moodsphere.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moodsphere</groupId>
-                <artifactId>mood-globe</artifactId>
+                <artifactId>globe</artifactId>
                 <version>${moodsphere.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moodsphere</groupId>
-                <artifactId>mood-risk</artifactId>
+                <artifactId>risk</artifactId>
                 <version>${moodsphere.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moodsphere</groupId>
-                <artifactId>mood-notify</artifactId>
+                <artifactId>notify</artifactId>
                 <version>${moodsphere.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moodsphere</groupId>
-                <artifactId>mood-config</artifactId>
+                <artifactId>config</artifactId>
                 <version>${moodsphere.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.moodsphere</groupId>
-                <artifactId>mood-stat</artifactId>
+                <artifactId>stat</artifactId>
                 <version>${moodsphere.version}</version>
             </dependency>
 

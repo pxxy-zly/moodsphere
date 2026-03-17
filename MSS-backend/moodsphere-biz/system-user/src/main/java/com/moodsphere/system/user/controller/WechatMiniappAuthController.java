@@ -14,8 +14,7 @@ import com.moodsphere.system.user.domain.vo.WechatMiniappLoginVo;
 import com.moodsphere.system.user.service.IWechatMiniappAuthService;
 
 /**
- * 微信小程序认证控制器
- *
+ * 瀵邦喕淇婄亸蹇曗柤鎼村繗顓荤拠浣瑰付閸掕泛娅? *
  * @author ruoyi
  */
 @RestController
@@ -26,11 +25,9 @@ public class WechatMiniappAuthController
     private IWechatMiniappAuthService wechatMiniappAuthService;
 
     /**
-     * 微信一键登录
-     *
-     * @param loginBody 登录参数
-     * @return token 和用户信息
-     */
+     * 瀵邦喕淇婃稉鈧柨顔炬瑜?     *
+     * @param loginBody 閻ц缍嶉崣鍌涙殶
+     * @return token 閸滃瞼鏁ら幋铚備繆閹?     */
     @Anonymous
     @PostMapping("/login")
     public AjaxResult login(@RequestBody(required = false) WechatMiniappLoginBody loginBody)
@@ -49,10 +46,9 @@ public class WechatMiniappAuthController
     }
 
     /**
-     * 查询当前用户信息
+     * 閺屻儴顕楄ぐ鎾冲閻劍鍩涙穱鈩冧紖
      *
-     * @return 当前用户信息
-     */
+     * @return 瑜版挸澧犻悽銊﹀煕娣団剝浼?     */
     @GetMapping("/info")
     public AjaxResult getInfo()
     {

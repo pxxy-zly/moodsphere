@@ -5,49 +5,45 @@ import java.util.Set;
 import com.moodsphere.common.core.domain.entity.SysUser;
 
 /**
- * 微信小程序一键登录响应对象
- *
+ * 瀵邦喕淇婄亸蹇曗柤鎼村繋绔撮柨顔炬瑜版洖鎼锋惔鏂款嚠鐠? *
  * @author ruoyi
  */
 public class WechatMiniappLoginVo
 {
     /**
-     * 登录 token
+     * 閻ц缍?token
      */
     private String token;
 
     /**
-     * 当前用户
+     * 瑜版挸澧犻悽銊﹀煕
      */
     private SysUser user;
 
     /**
-     * 当前角色标识列表
-     */
+     * 瑜版挸澧犵憴鎺曞閺嶅洩鐦戦崚妤勩€?     */
     private List<String> roles;
 
     /**
-     * 当前权限标识集合
+     * 瑜版挸澧犻弶鍐閺嶅洩鐦戦梿鍡楁値
      */
     private Set<String> permissions;
 
     /**
-     * 登录认证类型
-     */
+     * 閻ц缍嶇拋銈堢槈缁鐎?     */
     private String authType;
 
     /**
-     * 微信 openid
+     * 瀵邦喕淇?openid
      */
     private String openid;
 
     /**
-     * 是否首次登录
-     */
+     * 閺勵垰鎯佹＃鏍偧閻ц缍?     */
     private Boolean firstLogin;
 
     /**
-     * 是否需要绑定手机号
+     * 閺勵垰鎯侀棁鈧憰浣虹拨鐎规碍澧滈張鍝勫娇
      */
     private Boolean needBindPhone;
 

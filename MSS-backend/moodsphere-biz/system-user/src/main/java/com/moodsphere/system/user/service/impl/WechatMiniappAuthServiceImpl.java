@@ -41,8 +41,7 @@ import com.moodsphere.system.user.mapper.BizUserInfoMapper;
 import com.moodsphere.system.user.service.IWechatMiniappAuthService;
 
 /**
- * 微信小程序认证服务实现
- *
+ * 瀵邦喕淇婄亸蹇曗柤鎼村繗顓荤拠浣规箛閸斺€崇杽閻? *
  * @author ruoyi
  */
 @Service
@@ -104,7 +103,7 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
             userId = newUser.getUserId();
             if (userId == null)
             {
-                throw new ServiceException("创建系统用户失败");
+                throw new ServiceException("閸掓稑缂撶化鑽ょ埠閻劍鍩涙径杈Е");
             }
             insertDefaultRole(userId);
             userAuth = buildUserAuth(userId, session, now, loginIp);
@@ -127,7 +126,7 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         SysUser sysUser = sysUserService.selectUserById(userId);
         if (sysUser == null)
         {
-            throw new ServiceException("登录用户不存在");
+            throw new ServiceException("閻ц缍嶉悽銊﹀煕娑撳秴鐡ㄩ崷?);
         }
         Set<String> roleKeys = sysRoleService.selectRolePermissionByUserId(userId);
         Set<String> permissions = permissionService.getMenuPermission(sysUser);
@@ -166,7 +165,7 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
     {
         if (loginBody == null || StringUtils.isEmpty(loginBody.getCode()))
         {
-            throw new ServiceException("微信登录code不能为空");
+            throw new ServiceException("瀵邦喕淇婇惂璇茬秿code娑撳秷鍏樻稉铏光敄");
         }
     }
 
@@ -174,26 +173,26 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
     {
         if (StringUtils.isEmpty(wechatMiniappProperties.getAppid()) || StringUtils.isEmpty(wechatMiniappProperties.getSecret()))
         {
-            throw new ServiceException("微信小程序配置不完整");
+            throw new ServiceException("瀵邦喕淇婄亸蹇曗柤鎼村繘鍘ょ純顔荤瑝鐎瑰本鏆?);
         }
 
         String resp = requestCode2Session(code);
         if (StringUtils.isEmpty(resp))
         {
-            throw new ServiceException("调用微信认证服务失败");
+            throw new ServiceException("鐠嬪啰鏁ゅ顔讳繆鐠併倛鐦夐張宥呭婢惰精瑙?);
         }
         JSONObject jsonObject = JSON.parseObject(resp);
         Integer errcode = jsonObject.getInteger("errcode");
         if (errcode != null && errcode != 0)
         {
             String errmsg = jsonObject.getString("errmsg");
-            throw new ServiceException("微信登录失败: " + (StringUtils.isEmpty(errmsg) ? "未知错误" : errmsg));
+            throw new ServiceException("瀵邦喕淇婇惂璇茬秿婢惰精瑙? " + (StringUtils.isEmpty(errmsg) ? "閺堫亞鐓￠柨娆掝嚖" : errmsg));
         }
 
         String openid = jsonObject.getString("openid");
         if (StringUtils.isEmpty(openid))
         {
-            throw new ServiceException("微信登录失败: 未获取到openid");
+            throw new ServiceException("瀵邦喕淇婇惂璇茬秿婢惰精瑙? 閺堫亣骞忛崣鏍у煂openid");
         }
         WechatSession session = new WechatSession();
         session.setOpenid(openid);
@@ -236,7 +235,7 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         }
         catch (Exception e)
         {
-            throw new ServiceException("调用微信认证服务异常");
+            throw new ServiceException("鐠嬪啰鏁ゅ顔讳繆鐠併倛鐦夐張宥呭瀵倸鐖?);
         }
         finally
         {
@@ -301,11 +300,11 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         SysRole defaultRole = sysRoleService.selectRoleById(DEFAULT_ROLE_ID);
         if (defaultRole == null || !"0".equals(defaultRole.getStatus()))
         {
-            throw new ServiceException("默认角色不可用，请检查role_id=100的app_user角色配置");
+            throw new ServiceException("姒涙顓荤憴鎺曞娑撳秴褰查悽顭掔礉鐠囬攱顥呴弻顧竜le_id=100閻ㄥ垷pp_user鐟欐帟澹婇柊宥囩枂");
         }
         if (!DEFAULT_ROLE_KEY_APP_USER.equals(defaultRole.getRoleKey()))
         {
-            throw new ServiceException("默认角色配置错误，role_id=100必须对应app_user");
+            throw new ServiceException("姒涙顓荤憴鎺曞闁板秶鐤嗛柨娆掝嚖閿涘ole_id=100韫囧懘銆忕€电懓绨瞐pp_user");
         }
         sysUserService.insertUserAuth(userId, new Long[] { DEFAULT_ROLE_ID });
     }

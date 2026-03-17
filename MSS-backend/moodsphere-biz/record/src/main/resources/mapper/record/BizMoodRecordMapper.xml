@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moodsphere.record.mapper.BizMoodRecordMapper">
+
+    <resultMap id="BizMoodRecordResultMap" type="BizMoodRecord">
+        <id property="id" column="id" />
+        <result property="userId" column="user_id" />
+        <result property="sourceType" column="source_type" />
+        <result property="recordType" column="record_type" />
+        <result property="contentText" column="content_text" />
+        <result property="voiceDuration" column="voice_duration" />
+        <result property="emotionIntensity" column="emotion_intensity" />
+        <result property="recordTime" column="record_time" />
+        <result property="recordStatus" column="record_status" />
+        <result property="analyzeStatus" column="analyze_status" />
+        <result property="isPublic" column="is_public" />
+        <result property="province" column="province" />
+        <result property="city" column="city" />
+        <result property="district" column="district" />
+        <result property="locationName" column="location_name" />
+        <result property="longitude" column="longitude" />
+        <result property="latitude" column="latitude" />
+        <result property="deviceInfo" column="device_info" />
+        <result property="riskLevel" column="risk_level" />
+        <result property="createTime" column="create_time" />
+        <result property="createBy" column="create_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="delFlag" column="del_flag" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <sql id="selectBizMoodRecordColumns">
+        select id, user_id, source_type, record_type, content_text, voice_duration, emotion_intensity, record_time, record_status,
+               analyze_status, is_public, province, city, district, location_name, longitude, latitude, device_info, risk_level,
+               create_time, create_by, update_time, update_by, del_flag, remark
+        from biz_mood_record
+    </sql>
+
+    <insert id="insertBizMoodRecord" parameterType="BizMoodRecord" useGeneratedKeys="true" keyProperty="id">
+        insert into biz_mood_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="sourceType != null">source_type,</if>
+            <if test="recordType != null">record_type,</if>
+            <if test="contentText != null and contentText != ''">content_text,</if>
+            <if test="voiceDuration != null">voice_duration,</if>
+            <if test="emotionIntensity != null">emotion_intensity,</if>
+            <if test="recordTime != null">record_time,</if>
+            <if test="recordStatus != null">record_status,</if>
+            <if test="analyzeStatus != null">analyze_status,</if>
+            <if test="isPublic != null">is_public,</if>
+            <if test="province != null and province != ''">province,</if>
+            <if test="city != null and city != ''">city,</if>
+            <if test="district != null and district != ''">district,</if>
+            <if test="locationName != null and locationName != ''">location_name,</if>
+            <if test="longitude != null">longitude,</if>
+            <if test="latitude != null">latitude,</if>
+            <if test="deviceInfo != null and deviceInfo != ''">device_info,</if>
+            <if test="riskLevel != null">risk_level,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null and updateBy != ''">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="delFlag != null">del_flag,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="sourceType != null">#{sourceType},</if>
+            <if test="recordType != null">#{recordType},</if>
+            <if test="contentText != null and contentText != ''">#{contentText},</if>
+            <if test="voiceDuration != null">#{voiceDuration},</if>
+            <if test="emotionIntensity != null">#{emotionIntensity},</if>
+            <if test="recordTime != null">#{recordTime},</if>
+            <if test="recordStatus != null">#{recordStatus},</if>
+            <if test="analyzeStatus != null">#{analyzeStatus},</if>
+            <if test="isPublic != null">#{isPublic},</if>
+            <if test="province != null and province != ''">#{province},</if>
+            <if test="city != null and city != ''">#{city},</if>
+            <if test="district != null and district != ''">#{district},</if>
+            <if test="locationName != null and locationName != ''">#{locationName},</if>
+            <if test="longitude != null">#{longitude},</if>
+            <if test="latitude != null">#{latitude},</if>
+            <if test="deviceInfo != null and deviceInfo != ''">#{deviceInfo},</if>
+            <if test="riskLevel != null">#{riskLevel},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null and updateBy != ''">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+        </trim>
+    </insert>
+
+    <select id="selectByIdAndUserId" resultMap="BizMoodRecordResultMap">
+        <include refid="selectBizMoodRecordColumns" />
+        where id = #{id}
+          and user_id = #{userId}
+          and del_flag = 0
+        limit 1
+    </select>
+
+    <select id="selectById" resultMap="BizMoodRecordResultMap">
+        <include refid="selectBizMoodRecordColumns" />
+        where id = #{id}
+          and del_flag = 0
+        limit 1
+    </select>
+
+    <select id="selectLatestByUserId" resultMap="BizMoodRecordResultMap">
+        <include refid="selectBizMoodRecordColumns" />
+        where user_id = #{userId}
+          and del_flag = 0
+        order by record_time desc, id desc
+        limit 1
+    </select>
+
+    <update id="updateSubmitStatus">
+        update biz_mood_record
+        set record_status = #{recordStatus},
+            analyze_status = #{analyzeStatus},
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        where id = #{id}
+          and user_id = #{userId}
+          and del_flag = 0
+    </update>
+
+    <update id="updateAnalyzeResult">
+        update biz_mood_record
+        set analyze_status = #{analyzeStatus},
+            risk_level = #{riskLevel},
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        where id = #{id}
+          and del_flag = 0
+    </update>
+
+</mapper>
+
+

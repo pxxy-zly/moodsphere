@@ -61,47 +61,47 @@
         </dependency>
         <dependency>
             <groupId>com.moodsphere</groupId>
-            <artifactId>mood-record</artifactId>
+            <artifactId>record</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moodsphere</groupId>
-            <artifactId>mood-asset</artifactId>
+            <artifactId>asset</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moodsphere</groupId>
-            <artifactId>mood-ai-analyze</artifactId>
+            <artifactId>ai-analyze</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moodsphere</groupId>
-            <artifactId>mood-vector</artifactId>
+            <artifactId>vector</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moodsphere</groupId>
-            <artifactId>mood-weather-engine</artifactId>
+            <artifactId>weather-engine</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moodsphere</groupId>
-            <artifactId>mood-report</artifactId>
+            <artifactId>report</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moodsphere</groupId>
-            <artifactId>mood-globe</artifactId>
+            <artifactId>globe</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moodsphere</groupId>
-            <artifactId>mood-risk</artifactId>
+            <artifactId>risk</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moodsphere</groupId>
-            <artifactId>mood-notify</artifactId>
+            <artifactId>notify</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moodsphere</groupId>
-            <artifactId>mood-config</artifactId>
+            <artifactId>config</artifactId>
         </dependency>
         <dependency>
             <groupId>com.moodsphere</groupId>
-            <artifactId>mood-stat</artifactId>
+            <artifactId>stat</artifactId>
         </dependency>
 
     </dependencies>

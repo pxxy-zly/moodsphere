@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moodsphere.weather.mapper.BizWeatherSnapshotMapper">
+
+    <resultMap id="BizWeatherSnapshotResultMap" type="BizWeatherSnapshot">
+        <id property="id" column="id" />
+        <result property="userId" column="user_id" />
+        <result property="snapshotDate" column="snapshot_date" />
+        <result property="weatherCode" column="weather_code" />
+        <result property="weatherName" column="weather_name" />
+        <result property="skyType" column="sky_type" />
+        <result property="cloudDensity" column="cloud_density" />
+        <result property="rainIntensity" column="rain_intensity" />
+        <result property="lightningIntensity" column="lightning_intensity" />
+        <result property="windSpeed" column="wind_speed" />
+        <result property="fogIntensity" column="fog_intensity" />
+        <result property="colorTemperature" column="color_temperature" />
+        <result property="saturation" column="saturation" />
+        <result property="particleStyle" column="particle_style" />
+        <result property="animationSeed" column="animation_seed" />
+        <result property="combinedVector" column="combined_vector" />
+        <result property="recordCount" column="record_count" />
+        <result property="createTime" column="create_time" />
+        <result property="createBy" column="create_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="delFlag" column="del_flag" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <resultMap id="DailyVectorAggregateResultMap" type="com.moodsphere.weather.domain.vo.DailyVectorAggregateVo">
+        <result property="avgValence" column="avg_valence" />
+        <result property="avgArousal" column="avg_arousal" />
+        <result property="avgAnxiety" column="avg_anxiety" />
+        <result property="avgCalmness" column="avg_calmness" />
+        <result property="avgLoneliness" column="avg_loneliness" />
+        <result property="avgFatigue" column="avg_fatigue" />
+        <result property="avgAnger" column="avg_anger" />
+        <result property="avgHope" column="avg_hope" />
+        <result property="avgConfidence" column="avg_confidence" />
+        <result property="recordCount" column="record_count" />
+    </resultMap>
+
+    <sql id="selectBizWeatherSnapshotColumns">
+        select id, user_id, snapshot_date, weather_code, weather_name, sky_type, cloud_density, rain_intensity, lightning_intensity,
+               wind_speed, fog_intensity, color_temperature, saturation, particle_style, animation_seed, combined_vector, record_count,
+               create_time, create_by, update_time, update_by, del_flag, remark
+        from biz_weather_snapshot
+    </sql>
+
+    <select id="selectByUserAndDate" resultMap="BizWeatherSnapshotResultMap">
+        <include refid="selectBizWeatherSnapshotColumns" />
+        where user_id = #{userId}
+          and snapshot_date = #{snapshotDate}
+          and del_flag = 0
+        limit 1
+    </select>
+
+    <select id="selectDailyVectorAggregate" resultMap="DailyVectorAggregateResultMap">
+        select avg(v.valence) as avg_valence,
+               avg(v.arousal) as avg_arousal,
+               avg(v.anxiety) as avg_anxiety,
+               avg(v.calmness) as avg_calmness,
+               avg(v.loneliness) as avg_loneliness,
+               avg(v.fatigue) as avg_fatigue,
+               avg(v.anger) as avg_anger,
+               avg(v.hope) as avg_hope,
+               avg(v.confidence) as avg_confidence,
+               count(1) as record_count
+        from biz_mood_record r
+                 inner join biz_emotion_vector v on r.id = v.record_id and v.del_flag = 0
+        where r.user_id = #{userId}
+          and date(r.record_time) = date(#{snapshotDate})
+          and r.del_flag = 0
+    </select>
+
+    <insert id="upsertBizWeatherSnapshot" parameterType="BizWeatherSnapshot">
+        insert into biz_weather_snapshot (
+            user_id, snapshot_date, weather_code, weather_name, sky_type, cloud_density, rain_intensity, lightning_intensity,
+            wind_speed, fog_intensity, color_temperature, saturation, particle_style, animation_seed, combined_vector, record_count,
+            create_by, create_time, update_by, update_time, del_flag, remark
+        ) values (
+            #{userId}, #{snapshotDate}, #{weatherCode}, #{weatherName}, #{skyType}, #{cloudDensity}, #{rainIntensity},
+            #{lightningIntensity}, #{windSpeed}, #{fogIntensity}, #{colorTemperature}, #{saturation}, #{particleStyle},
+            #{animationSeed}, #{combinedVector}, #{recordCount}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime}, #{delFlag},
+            #{remark}
+        )
+        on duplicate key update
+            weather_code = values(weather_code),
+            weather_name = values(weather_name),
+            sky_type = values(sky_type),
+            cloud_density = values(cloud_density),
+            rain_intensity = values(rain_intensity),
+            lightning_intensity = values(lightning_intensity),
+            wind_speed = values(wind_speed),
+            fog_intensity = values(fog_intensity),
+            color_temperature = values(color_temperature),
+            saturation = values(saturation),
+            particle_style = values(particle_style),
+            animation_seed = values(animation_seed),
+            combined_vector = values(combined_vector),
+            record_count = values(record_count),
+            update_by = values(update_by),
+            update_time = values(update_time),
+            del_flag = 0,
+            remark = values(remark)
+    </insert>
+
+</mapper>
+
+
