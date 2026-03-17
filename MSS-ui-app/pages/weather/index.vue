@@ -1,45 +1,91 @@
-<template>
+﻿<template>
   <view class="weather-page">
-    <view class="header">情绪天气</view>
-    <view class="card">
-      <text class="city">当前用户：{{ name || '未命名用户' }}</text>
-      <text class="weather">今日心情天气：晴（模拟）</text>
-      <text class="temp">体感温度：26℃（模拟）</text>
+    <view class="header">今日天气快照</view>
+
+    <view v-if="loading" class="card">正在加载今日快照...</view>
+
+    <view v-else-if="!snapshot" class="card">
+      <view class="weather-name">今日暂无快照</view>
+      <view class="desc">先去记录一条情绪，系统会自动生成你的天气。</view>
+      <button class="record-btn" @click="goRecord">去记录</button>
     </view>
 
-    <button class="action-btn" @click="refreshInfo">刷新用户信息</button>
-    <button class="logout-btn" @click="handleLogout">退出登录</button>
+    <view v-else class="card">
+      <view class="weather-name">{{ snapshot.weatherName || '--' }}</view>
+      <view class="desc">天气编码：{{ snapshot.weatherCode || '--' }}</view>
+
+      <view class="row">
+        <text>天空</text>
+        <text>{{ formatNum(snapshot.skyType) }}</text>
+      </view>
+      <view class="row">
+        <text>云层</text>
+        <text>{{ formatNum(snapshot.cloudDensity) }}</text>
+      </view>
+      <view class="row">
+        <text>降雨</text>
+        <text>{{ formatNum(snapshot.rainIntensity) }}</text>
+      </view>
+      <view class="row">
+        <text>风速</text>
+        <text>{{ formatNum(snapshot.windSpeed) }}</text>
+      </view>
+      <view class="row">
+        <text>雾气</text>
+        <text>{{ formatNum(snapshot.fogIntensity) }}</text>
+      </view>
+      <view class="row">
+        <text>色温</text>
+        <text>{{ formatNum(snapshot.colorTemperature) }}</text>
+      </view>
+      <view class="row">
+        <text>饱和度</text>
+        <text>{{ formatNum(snapshot.saturation) }}</text>
+      </view>
+      <view class="row">
+        <text>今日记录数</text>
+        <text>{{ formatNum(snapshot.recordCount) }}</text>
+      </view>
+    </view>
+
+    <button class="refresh-btn" @click="loadToday">刷新</button>
   </view>
 </template>
 
 <script>
+import { getMoodWeatherToday } from '@/api/mood'
+
 export default {
   data() {
     return {
-      name: ''
+      loading: false,
+      snapshot: null
     }
   },
   onShow() {
-    this.syncFromStore()
+    this.loadToday()
   },
   methods: {
-    syncFromStore() {
-      this.name = this.$store.getters.name
+    async loadToday() {
+      this.loading = true
+      try {
+        const res = await getMoodWeatherToday()
+        this.snapshot = res.data || null
+      } catch (error) {
+        this.snapshot = null
+        this.$modal.msgError('获取今日快照失败')
+      } finally {
+        this.loading = false
+      }
     },
-    refreshInfo() {
-      this.$store.dispatch('GetInfo').then(() => {
-        this.syncFromStore()
-        this.$modal.msgSuccess('用户信息已更新')
-      }).catch(() => {
-        this.$modal.msgError('获取用户信息失败')
-      })
+    formatNum(value) {
+      if (value === null || value === undefined || value === '') {
+        return '--'
+      }
+      return value
     },
-    handleLogout() {
-      this.$modal.confirm('确定退出登录吗？').then(() => {
-        this.$store.dispatch('LogOut').finally(() => {
-          this.$tab.reLaunch('/pages/auth/login')
-        })
-      })
+    goRecord() {
+      this.$tab.switchTab('/pages/record/index')
     }
   }
 }
@@ -48,59 +94,59 @@ export default {
 <style scoped>
 .weather-page {
   min-height: 100vh;
-  padding: 40rpx;
+  padding: 32rpx;
   background: linear-gradient(180deg, #eef6ff 0%, #ffffff 100%);
 }
 
 .header {
-  font-size: 44rpx;
+  font-size: 42rpx;
   font-weight: 600;
   color: #1f2d3d;
 }
 
 .card {
-  margin-top: 40rpx;
-  padding: 36rpx;
-  border-radius: 24rpx;
+  margin-top: 32rpx;
+  padding: 30rpx;
+  border-radius: 20rpx;
   background: #ffffff;
   box-shadow: 0 12rpx 28rpx rgba(25, 137, 250, 0.12);
-  display: flex;
-  flex-direction: column;
 }
 
-.city {
-  font-size: 30rpx;
-  color: #333;
-}
-
-.weather {
-  margin-top: 16rpx;
-  font-size: 36rpx;
+.weather-name {
+  font-size: 40rpx;
   color: #1989fa;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.temp {
+.desc {
+  margin-top: 10rpx;
+  color: #64748b;
+  font-size: 26rpx;
+}
+
+.row {
   margin-top: 16rpx;
+  display: flex;
+  justify-content: space-between;
+  color: #334155;
   font-size: 28rpx;
-  color: #666;
 }
 
-.action-btn,
-.logout-btn {
-  margin-top: 30rpx;
-  border-radius: 50rpx;
+.refresh-btn,
+.record-btn {
+  margin-top: 26rpx;
+  border-radius: 44rpx;
   font-size: 30rpx;
 }
 
-.action-btn {
-  margin-top: 80rpx;
+.refresh-btn {
   background: #1989fa;
-  color: #fff;
+  color: #ffffff;
 }
 
-.logout-btn {
-  background: #f56c6c;
-  color: #fff;
+.record-btn {
+  background: #ffffff;
+  color: #1989fa;
+  border: 1rpx solid #1989fa;
 }
 </style>

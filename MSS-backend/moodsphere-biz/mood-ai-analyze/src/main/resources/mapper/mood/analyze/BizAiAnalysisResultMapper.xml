@@ -1,0 +1,85 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moodsphere.mood.analyze.mapper.BizAiAnalysisResultMapper">
+
+    <resultMap id="BizAiAnalysisResultResultMap" type="BizAiAnalysisResult">
+        <id property="id" column="id" />
+        <result property="recordId" column="record_id" />
+        <result property="primaryEmotion" column="primary_emotion" />
+        <result property="secondaryEmotion" column="secondary_emotion" />
+        <result property="emotionKeywords" column="emotion_keywords" />
+        <result property="emotionScores" column="emotion_scores" />
+        <result property="sceneRecognition" column="scene_recognition" />
+        <result property="riskLevel" column="risk_level" />
+        <result property="riskReason" column="risk_reason" />
+        <result property="aiSummary" column="ai_summary" />
+        <result property="rawResponse" column="raw_response" />
+        <result property="provider" column="provider" />
+        <result property="modelName" column="model_name" />
+        <result property="modelVersion" column="model_version" />
+        <result property="promptVersion" column="prompt_version" />
+        <result property="requestId" column="request_id" />
+        <result property="analysisAt" column="analysis_at" />
+        <result property="analysisCostMs" column="analysis_cost_ms" />
+        <result property="status" column="status" />
+        <result property="createTime" column="create_time" />
+        <result property="createBy" column="create_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="delFlag" column="del_flag" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <sql id="selectBizAiAnalysisResultColumns">
+        select id, record_id, primary_emotion, secondary_emotion, emotion_keywords, emotion_scores, scene_recognition, risk_level,
+               risk_reason, ai_summary, raw_response, provider, model_name, model_version, prompt_version, request_id, analysis_at,
+               analysis_cost_ms, status, create_time, create_by, update_time, update_by, del_flag, remark
+        from biz_ai_analysis_result
+    </sql>
+
+    <select id="selectByRecordId" resultMap="BizAiAnalysisResultResultMap">
+        <include refid="selectBizAiAnalysisResultColumns" />
+        where record_id = #{recordId}
+          and del_flag = 0
+        limit 1
+    </select>
+
+    <insert id="upsertBizAiAnalysisResult" parameterType="BizAiAnalysisResult">
+        insert into biz_ai_analysis_result (
+            record_id, primary_emotion, secondary_emotion, emotion_keywords, emotion_scores, scene_recognition, risk_level,
+            risk_reason, ai_summary, raw_response, provider, model_name, model_version, prompt_version, request_id, analysis_at,
+            analysis_cost_ms, status, create_by, create_time, update_by, update_time, del_flag, remark
+        ) values (
+            #{recordId}, #{primaryEmotion}, #{secondaryEmotion}, #{emotionKeywords}, #{emotionScores}, #{sceneRecognition},
+            #{riskLevel}, #{riskReason}, #{aiSummary}, #{rawResponse}, #{provider}, #{modelName}, #{modelVersion}, #{promptVersion},
+            #{requestId}, #{analysisAt}, #{analysisCostMs}, #{status}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime},
+            #{delFlag}, #{remark}
+        )
+        on duplicate key update
+            primary_emotion = values(primary_emotion),
+            secondary_emotion = values(secondary_emotion),
+            emotion_keywords = values(emotion_keywords),
+            emotion_scores = values(emotion_scores),
+            scene_recognition = values(scene_recognition),
+            risk_level = values(risk_level),
+            risk_reason = values(risk_reason),
+            ai_summary = values(ai_summary),
+            raw_response = values(raw_response),
+            provider = values(provider),
+            model_name = values(model_name),
+            model_version = values(model_version),
+            prompt_version = values(prompt_version),
+            request_id = values(request_id),
+            analysis_at = values(analysis_at),
+            analysis_cost_ms = values(analysis_cost_ms),
+            status = values(status),
+            update_by = values(update_by),
+            update_time = values(update_time),
+            del_flag = 0,
+            remark = values(remark)
+    </insert>
+
+</mapper>
+

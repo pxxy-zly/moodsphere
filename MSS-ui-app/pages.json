@@ -1,4 +1,4 @@
-{
+﻿{
   "pages": [
     {
       "path": "pages/auth/login",
@@ -16,6 +16,12 @@
       "path": "pages/record/index",
       "style": {
         "navigationBarTitleText": "记录"
+      }
+    },
+    {
+      "path": "pages/record/result",
+      "style": {
+        "navigationBarTitleText": "分析结果"
       }
     },
     {

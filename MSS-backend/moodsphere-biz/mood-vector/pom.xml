@@ -20,6 +20,14 @@
             <groupId>com.moodsphere</groupId>
             <artifactId>moodsphere-common</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.moodsphere</groupId>
+            <artifactId>mood-record</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.moodsphere</groupId>
+            <artifactId>mood-ai-analyze</artifactId>
+        </dependency>
     </dependencies>
 
 </project>
