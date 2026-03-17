@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moodsphere.system.user.mapper.BizUserAuthMapper">
+
+    <resultMap id="BizUserAuthResultMap" type="BizUserAuth">
+        <id property="id" column="id" />
+        <result property="userId" column="user_id" />
+        <result property="authType" column="auth_type" />
+        <result property="openid" column="openid" />
+        <result property="unionid" column="unionid" />
+        <result property="sessionKey" column="session_key" />
+        <result property="authStatus" column="auth_status" />
+        <result property="lastLoginTime" column="last_login_time" />
+        <result property="lastLoginIp" column="last_login_ip" />
+        <result property="createTime" column="create_time" />
+        <result property="createBy" column="create_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="delFlag" column="del_flag" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <select id="selectByAuthTypeAndOpenid" resultMap="BizUserAuthResultMap">
+        select id, user_id, auth_type, openid, unionid, session_key, auth_status, last_login_time, last_login_ip,
+               create_time, create_by, update_time, update_by, del_flag, remark
+        from biz_user_auth
+        where auth_type = #{authType}
+          and openid = #{openid}
+          and auth_status = 1
+          and del_flag = 0
+        limit 1
+    </select>
+
+    <insert id="insertBizUserAuth" parameterType="BizUserAuth" useGeneratedKeys="true" keyProperty="id">
+        insert into biz_user_auth
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="authType != null and authType != ''">auth_type,</if>
+            <if test="openid != null and openid != ''">openid,</if>
+            <if test="unionid != null and unionid != ''">unionid,</if>
+            <if test="sessionKey != null and sessionKey != ''">session_key,</if>
+            <if test="authStatus != null">auth_status,</if>
+            <if test="lastLoginTime != null">last_login_time,</if>
+            <if test="lastLoginIp != null and lastLoginIp != ''">last_login_ip,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null and updateBy != ''">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="delFlag != null and delFlag != ''">del_flag,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="authType != null and authType != ''">#{authType},</if>
+            <if test="openid != null and openid != ''">#{openid},</if>
+            <if test="unionid != null and unionid != ''">#{unionid},</if>
+            <if test="sessionKey != null and sessionKey != ''">#{sessionKey},</if>
+            <if test="authStatus != null">#{authStatus},</if>
+            <if test="lastLoginTime != null">#{lastLoginTime},</if>
+            <if test="lastLoginIp != null and lastLoginIp != ''">#{lastLoginIp},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null and updateBy != ''">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="delFlag != null and delFlag != ''">#{delFlag},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+        </trim>
+    </insert>
+
+    <update id="updateLoginInfo" parameterType="BizUserAuth">
+        update biz_user_auth
+        <set>
+            <if test="sessionKey != null and sessionKey != ''">session_key = #{sessionKey},</if>
+            <if test="unionid != null and unionid != ''">unionid = #{unionid},</if>
+            <if test="lastLoginTime != null">last_login_time = #{lastLoginTime},</if>
+            <if test="lastLoginIp != null and lastLoginIp != ''">last_login_ip = #{lastLoginIp},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+</mapper>

@@ -11,6 +11,8 @@
       "vmArgs": "-Xmx2g -Dspring.profiles.active=druid -Dfile.encoding=UTF-8",
       "env": {
         "MAVEN_OPTS": "-Xmx2g",
+        "WECHAT_MINIAPP_APPID": "wx313bd8559c50679f",
+        "WECHAT_MINIAPP_SECRET": "5d32b184c9c25ec542ea24a1c5255180"
       },
       "console": "integratedTerminal"
     },

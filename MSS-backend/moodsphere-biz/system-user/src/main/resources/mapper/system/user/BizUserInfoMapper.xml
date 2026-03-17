@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moodsphere.system.user.mapper.BizUserInfoMapper">
+
+    <resultMap id="BizUserInfoResultMap" type="BizUserInfo">
+        <id property="id" column="id" />
+        <result property="userId" column="user_id" />
+        <result property="nickName" column="nick_name" />
+        <result property="avatar" column="avatar" />
+        <result property="gender" column="gender" />
+        <result property="birthday" column="birthday" />
+        <result property="signature" column="signature" />
+        <result property="emotionLevel" column="emotion_level" />
+        <result property="recordDays" column="record_days" />
+        <result property="totalRecords" column="total_records" />
+        <result property="anonymousProjection" column="anonymous_projection" />
+        <result property="lastRecordTime" column="last_record_time" />
+        <result property="createTime" column="create_time" />
+        <result property="createBy" column="create_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="delFlag" column="del_flag" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <select id="selectByUserId" resultMap="BizUserInfoResultMap">
+        select id, user_id, nick_name, avatar, gender, birthday, signature, emotion_level, record_days, total_records,
+               anonymous_projection, last_record_time, create_time, create_by, update_time, update_by, del_flag, remark
+        from biz_user_info
+        where user_id = #{userId}
+          and del_flag = 0
+        limit 1
+    </select>
+
+    <insert id="insertBizUserInfo" parameterType="BizUserInfo" useGeneratedKeys="true" keyProperty="id">
+        insert into biz_user_info
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="nickName != null and nickName != ''">nick_name,</if>
+            <if test="avatar != null and avatar != ''">avatar,</if>
+            <if test="gender != null">gender,</if>
+            <if test="birthday != null">birthday,</if>
+            <if test="signature != null and signature != ''">signature,</if>
+            <if test="emotionLevel != null">emotion_level,</if>
+            <if test="recordDays != null">record_days,</if>
+            <if test="totalRecords != null">total_records,</if>
+            <if test="anonymousProjection != null">anonymous_projection,</if>
+            <if test="lastRecordTime != null">last_record_time,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null and updateBy != ''">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="delFlag != null and delFlag != ''">del_flag,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="nickName != null and nickName != ''">#{nickName},</if>
+            <if test="avatar != null and avatar != ''">#{avatar},</if>
+            <if test="gender != null">#{gender},</if>
+            <if test="birthday != null">#{birthday},</if>
+            <if test="signature != null and signature != ''">#{signature},</if>
+            <if test="emotionLevel != null">#{emotionLevel},</if>
+            <if test="recordDays != null">#{recordDays},</if>
+            <if test="totalRecords != null">#{totalRecords},</if>
+            <if test="anonymousProjection != null">#{anonymousProjection},</if>
+            <if test="lastRecordTime != null">#{lastRecordTime},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null and updateBy != ''">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="delFlag != null and delFlag != ''">#{delFlag},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+        </trim>
+    </insert>
+
+</mapper>
