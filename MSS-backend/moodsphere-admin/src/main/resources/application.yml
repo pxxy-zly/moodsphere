@@ -148,3 +148,14 @@ wechat:
   miniapp:
     appid: ${WECHAT_MINIAPP_APPID:}
     secret: ${WECHAT_MINIAPP_SECRET:}
+
+security:
+  pc-login:
+    block-app-user: true
+    admin-role-keys:
+      - admin
+      - common
+      - ops_manager
+      - ai_strategist
+      - safety_officer
+      - data_analyst

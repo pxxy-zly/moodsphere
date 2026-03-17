@@ -1,5 +1,12 @@
 package com.moodsphere.system.user.service.impl;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -19,7 +26,6 @@ import com.moodsphere.common.core.domain.model.LoginUser;
 import com.moodsphere.common.exception.ServiceException;
 import com.moodsphere.common.utils.SecurityUtils;
 import com.moodsphere.common.utils.StringUtils;
-import com.moodsphere.common.utils.http.HttpUtils;
 import com.moodsphere.common.utils.ip.IpUtils;
 import com.moodsphere.framework.web.service.SysPermissionService;
 import com.moodsphere.framework.web.service.TokenService;
@@ -44,11 +50,9 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
 {
     private static final String AUTH_TYPE_WECHAT_MP = "wechat_mp";
 
-    private static final String DEFAULT_ROLE_KEY = "app_user";
+    private static final String DEFAULT_ROLE_KEY_APP_USER = "app_user";
 
-    private static final String DEFAULT_ROLE_KEY_COMMON = "common";
-
-    private static final Long DEFAULT_ROLE_ID = 2L;
+    private static final Long DEFAULT_ROLE_ID = 100L;
 
     private static final String DEFAULT_NICK_NAME = "mood_user";
 
@@ -125,9 +129,7 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         {
             throw new ServiceException("登录用户不存在");
         }
-
-        List<SysRole> roles = sysRoleService.selectRolesByUserId(userId);
-        sysUser.setRoles(roles);
+        Set<String> roleKeys = sysRoleService.selectRolePermissionByUserId(userId);
         Set<String> permissions = permissionService.getMenuPermission(sysUser);
 
         LoginUser loginUser = new LoginUser(sysUser.getUserId(), sysUser.getDeptId(), sysUser, permissions);
@@ -136,7 +138,7 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         WechatMiniappLoginVo result = new WechatMiniappLoginVo();
         result.setToken(token);
         result.setUser(sysUser);
-        result.setRoles(extractRoles(sysUser));
+        result.setRoles(toRoleList(roleKeys));
         result.setPermissions(permissions);
         result.setAuthType(AUTH_TYPE_WECHAT_MP);
         result.setOpenid(session.getOpenid());
@@ -149,9 +151,10 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
     public WechatMiniappLoginVo getCurrentUserInfo()
     {
         LoginUser loginUser = SecurityUtils.getLoginUser();
+        Set<String> roleKeys = sysRoleService.selectRolePermissionByUserId(loginUser.getUserId());
         WechatMiniappLoginVo result = new WechatMiniappLoginVo();
         result.setUser(loginUser.getUser());
-        result.setRoles(extractRoles(loginUser.getUser()));
+        result.setRoles(toRoleList(roleKeys));
         result.setPermissions(loginUser.getPermissions());
         result.setAuthType(AUTH_TYPE_WECHAT_MP);
         result.setFirstLogin(Boolean.FALSE);
@@ -174,9 +177,7 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
             throw new ServiceException("微信小程序配置不完整");
         }
 
-        String param = "appid=" + wechatMiniappProperties.getAppid() + "&secret=" + wechatMiniappProperties.getSecret()
-                + "&js_code=" + code + "&grant_type=authorization_code";
-        String resp = HttpUtils.sendGet(WECHAT_CODE2SESSION_URL, param);
+        String resp = requestCode2Session(code);
         if (StringUtils.isEmpty(resp))
         {
             throw new ServiceException("调用微信认证服务失败");
@@ -199,6 +200,51 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         session.setUnionid(jsonObject.getString("unionid"));
         session.setSessionKey(jsonObject.getString("session_key"));
         return session;
+    }
+
+    private String requestCode2Session(String code)
+    {
+        HttpURLConnection connection = null;
+        try
+        {
+            String query = "appid=" + URLEncoder.encode(wechatMiniappProperties.getAppid(), StandardCharsets.UTF_8)
+                    + "&secret=" + URLEncoder.encode(wechatMiniappProperties.getSecret(), StandardCharsets.UTF_8)
+                    + "&js_code=" + URLEncoder.encode(code, StandardCharsets.UTF_8)
+                    + "&grant_type=authorization_code";
+            URL url = new URL(WECHAT_CODE2SESSION_URL + "?" + query);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+
+            int status = connection.getResponseCode();
+            InputStream inputStream = status >= 200 && status < 400 ? connection.getInputStream() : connection.getErrorStream();
+            if (inputStream == null)
+            {
+                return null;
+            }
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8)))
+            {
+                StringBuilder result = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null)
+                {
+                    result.append(line);
+                }
+                return result.toString();
+            }
+        }
+        catch (Exception e)
+        {
+            throw new ServiceException("调用微信认证服务异常");
+        }
+        finally
+        {
+            if (connection != null)
+            {
+                connection.disconnect();
+            }
+        }
     }
 
     private SysUser buildNewUser(WechatMiniappLoginBody loginBody, String openid)
@@ -255,21 +301,22 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         SysRole defaultRole = sysRoleService.selectRoleById(DEFAULT_ROLE_ID);
         if (defaultRole == null || !"0".equals(defaultRole.getStatus()))
         {
-            return;
+            throw new ServiceException("默认角色不可用，请检查role_id=100的app_user角色配置");
         }
-        if (DEFAULT_ROLE_KEY_COMMON.equals(defaultRole.getRoleKey()))
+        if (!DEFAULT_ROLE_KEY_APP_USER.equals(defaultRole.getRoleKey()))
         {
-            sysUserService.insertUserAuth(userId, new Long[] { DEFAULT_ROLE_ID });
+            throw new ServiceException("默认角色配置错误，role_id=100必须对应app_user");
         }
+        sysUserService.insertUserAuth(userId, new Long[] { DEFAULT_ROLE_ID });
     }
 
-    private List<String> extractRoles(SysUser user)
+    private List<String> toRoleList(Set<String> roleKeys)
     {
-        if (user == null || user.getRoles() == null || user.getRoles().isEmpty())
+        if (roleKeys == null || roleKeys.isEmpty())
         {
-            return Collections.singletonList(DEFAULT_ROLE_KEY);
+            return Collections.singletonList(DEFAULT_ROLE_KEY_APP_USER);
         }
-        return user.getRoles().stream().map(SysRole::getRoleKey).filter(StringUtils::isNotEmpty).collect(Collectors.toList());
+        return roleKeys.stream().filter(StringUtils::isNotEmpty).collect(Collectors.toList());
     }
 
     private String buildUserName(String openid)

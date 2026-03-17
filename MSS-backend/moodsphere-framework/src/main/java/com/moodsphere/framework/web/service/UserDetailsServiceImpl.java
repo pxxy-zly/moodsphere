@@ -1,5 +1,7 @@
 package com.moodsphere.framework.web.service;
 
+import java.util.List;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,6 +15,7 @@ import com.moodsphere.common.enums.UserStatus;
 import com.moodsphere.common.exception.ServiceException;
 import com.moodsphere.common.utils.MessageUtils;
 import com.moodsphere.common.utils.StringUtils;
+import com.moodsphere.system.service.ISysRoleService;
 import com.moodsphere.system.service.ISysUserService;
 
 /**
@@ -34,6 +37,12 @@ public class UserDetailsServiceImpl implements UserDetailsService
     @Autowired
     private SysPermissionService permissionService;
 
+    @Autowired
+    private ISysRoleService roleService;
+
+    @Autowired
+    private PcLoginSecurityProperties pcLoginSecurityProperties;
+
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException
     {
@@ -54,9 +63,37 @@ public class UserDetailsServiceImpl implements UserDetailsService
             throw new ServiceException(MessageUtils.message("user.blocked"));
         }
 
+        checkPcLoginAccess(user);
         passwordService.validate(user);
 
         return createLoginUser(user);
+    }
+
+    private void checkPcLoginAccess(SysUser user)
+    {
+        if (!pcLoginSecurityProperties.isBlockAppUser())
+        {
+            return;
+        }
+
+        Set<String> roleKeys = roleService.selectRolePermissionByUserId(user.getUserId());
+        if (roleKeys == null || roleKeys.isEmpty() || !roleKeys.contains("app_user"))
+        {
+            return;
+        }
+
+        List<String> adminRoleKeys = pcLoginSecurityProperties.getAdminRoleKeys();
+        if (adminRoleKeys != null)
+        {
+            for (String roleKey : adminRoleKeys)
+            {
+                if (StringUtils.isNotEmpty(roleKey) && roleKeys.contains(roleKey))
+                {
+                    return;
+                }
+            }
+        }
+        throw new ServiceException("移动端账号不允许登录管理后台");
     }
 
     public UserDetails createLoginUser(SysUser user)
