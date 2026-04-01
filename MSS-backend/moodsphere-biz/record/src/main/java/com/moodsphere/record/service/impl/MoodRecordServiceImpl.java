@@ -13,22 +13,36 @@ import com.moodsphere.record.domain.entity.BizMoodRecord;
 import com.moodsphere.record.mapper.BizMoodRecordMapper;
 import com.moodsphere.record.service.IMoodRecordService;
 
+/**
+ * 情绪记录服务实现类
+ */
 @Service
 public class MoodRecordServiceImpl implements IMoodRecordService
 {
+    /** 记录状态：已提交 */
     private static final int RECORD_STATUS_SUBMITTED = 1;
 
+    /** 分析状态：待分析 */
     private static final int ANALYZE_STATUS_PENDING = 0;
 
+    /** 默认情绪强度 */
     private static final int DEFAULT_INTENSITY = 5;
 
+    /** 最小情绪强度 */
     private static final int MIN_INTENSITY = 1;
 
+    /** 最大情绪强度 */
     private static final int MAX_INTENSITY = 10;
 
     @Autowired
     private BizMoodRecordMapper bizMoodRecordMapper;
 
+    /**
+     * 创建情绪记录
+     * 
+     * @param body 创建请求体
+     * @return 记录ID
+     */
     @Override
     public Long createRecord(MoodRecordCreateBody body)
     {
@@ -77,6 +91,12 @@ public class MoodRecordServiceImpl implements IMoodRecordService
         return record.getId();
     }
 
+    /**
+     * 获取记录详情
+     * 
+     * @param recordId 记录ID
+     * @return 记录实体
+     */
     @Override
     public BizMoodRecord getRecord(Long recordId)
     {
@@ -89,12 +109,22 @@ public class MoodRecordServiceImpl implements IMoodRecordService
         return record;
     }
 
+    /**
+     * 获取最新记录
+     * 
+     * @return 最新记录实体
+     */
     @Override
     public BizMoodRecord getLatestRecord()
     {
         return bizMoodRecordMapper.selectLatestByUserId(SecurityUtils.getUserId());
     }
 
+    /**
+     * 提交记录
+     * 
+     * @param recordId 记录ID
+     */
     @Override
     public void submitRecord(Long recordId)
     {
@@ -107,6 +137,11 @@ public class MoodRecordServiceImpl implements IMoodRecordService
         }
     }
 
+    /**
+     * 检查记录ID
+     * 
+     * @param recordId 记录ID
+     */
     private void checkRecordId(Long recordId)
     {
         if (recordId == null || recordId <= 0)
@@ -117,6 +152,9 @@ public class MoodRecordServiceImpl implements IMoodRecordService
 
     /**
      * 统一将情绪强度限制在 1~10 区间。
+     * 
+     * @param intensity 情绪强度
+     * @return 标准化后的强度
      */
     private int normalizeIntensity(Integer intensity)
     {
@@ -127,6 +165,12 @@ public class MoodRecordServiceImpl implements IMoodRecordService
         return Math.max(MIN_INTENSITY, Math.min(MAX_INTENSITY, intensity));
     }
 
+    /**
+     * 获取默认用户名
+     * 
+     * @param username 用户名
+     * @return 默认用户名
+     */
     private String defaultUsername(String username)
     {
         return StringUtils.isEmpty(username) ? "system" : username;

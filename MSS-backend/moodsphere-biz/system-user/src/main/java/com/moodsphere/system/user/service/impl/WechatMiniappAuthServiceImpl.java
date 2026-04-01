@@ -41,23 +41,30 @@ import com.moodsphere.system.user.mapper.BizUserInfoMapper;
 import com.moodsphere.system.user.service.IWechatMiniappAuthService;
 
 /**
- * 微信小程序登录认证服务实现。
+ * 微信小程序登录认证服务实现类
  */
 @Service
 public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
 {
+    /** 认证类型：微信小程序 */
     private static final String AUTH_TYPE_WECHAT_MP = "wechat_mp";
 
+    /** 默认角色标识 */
     private static final String DEFAULT_ROLE_KEY_APP_USER = "app_user";
 
+    /** 默认角色ID */
     private static final Long DEFAULT_ROLE_ID = 100L;
 
+    /** 默认昵称 */
     private static final String DEFAULT_NICK_NAME = "mood_user";
 
+    /** 默认头像 */
     private static final String DEFAULT_AVATAR = "";
 
+    /** 微信code2session接口地址 */
     private static final String WECHAT_CODE2SESSION_URL = "https://api.weixin.qq.com/sns/jscode2session";
 
+    /** 默认部门ID */
     private static final Long DEFAULT_DEPT_ID = 100L;
 
     @Autowired
@@ -81,6 +88,13 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
     @Autowired
     private WechatMiniappProperties wechatMiniappProperties;
 
+    /**
+     * 微信小程序登录
+     * 使用微信code换取登录凭证，首次登录会自动注册用户
+     * 
+     * @param loginBody 登录请求体
+     * @return 登录结果
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public WechatMiniappLoginVo login(WechatMiniappLoginBody loginBody)
@@ -154,6 +168,11 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         return result;
     }
 
+    /**
+     * 获取当前登录用户信息
+     * 
+     * @return 当前登录用户信息
+     */
     @Override
     public WechatMiniappLoginVo getCurrentUserInfo()
     {
@@ -174,6 +193,11 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         return result;
     }
 
+    /**
+     * 验证登录请求体
+     * 
+     * @param loginBody 登录请求体
+     */
     private void validateLoginBody(WechatMiniappLoginBody loginBody)
     {
         if (loginBody == null)
@@ -188,6 +212,12 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         loginBody.setCode(code);
     }
 
+    /**
+     * 使用微信code换取session信息
+     * 
+     * @param code 微信登录code
+     * @return 微信session信息
+     */
     private WechatSession exchangeCode(String code)
     {
         if (StringUtils.isEmpty(wechatMiniappProperties.getAppid()) || StringUtils.isEmpty(wechatMiniappProperties.getSecret()))
@@ -222,6 +252,12 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         return session;
     }
 
+    /**
+     * 请求微信code2session接口
+     * 
+     * @param code 微信登录code
+     * @return 接口响应内容
+     */
     private String requestCode2Session(String code)
     {
         HttpURLConnection connection = null;
@@ -269,6 +305,13 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         }
     }
 
+    /**
+     * 构建新用户
+     * 
+     * @param loginBody 登录请求体
+     * @param openid 微信openid
+     * @return 新用户对象
+     */
     private SysUser buildNewUser(WechatMiniappLoginBody loginBody, String openid)
     {
         SysUser user = new SysUser();
@@ -284,6 +327,15 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         return user;
     }
 
+    /**
+     * 构建用户认证信息
+     * 
+     * @param userId 用户ID
+     * @param session 微信session
+     * @param now 当前时间
+     * @param loginIp 登录IP
+     * @return 用户认证对象
+     */
     private BizUserAuth buildUserAuth(Long userId, WechatSession session, Date now, String loginIp)
     {
         BizUserAuth userAuth = new BizUserAuth();
@@ -301,6 +353,13 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         return userAuth;
     }
 
+    /**
+     * 构建用户信息
+     * 
+     * @param userId 用户ID
+     * @param loginBody 登录请求体
+     * @return 用户信息对象
+     */
     private BizUserInfo buildUserInfo(Long userId, WechatMiniappLoginBody loginBody)
     {
         BizUserInfo userInfo = new BizUserInfo();
@@ -318,6 +377,11 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         return userInfo;
     }
 
+    /**
+     * 插入默认角色
+     * 
+     * @param userId 用户ID
+     */
     private void insertDefaultRole(Long userId)
     {
         SysRole defaultRole = sysRoleService.selectRoleById(DEFAULT_ROLE_ID);
@@ -332,6 +396,12 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         sysUserService.insertUserAuth(userId, new Long[] { DEFAULT_ROLE_ID });
     }
 
+    /**
+     * 将角色key集合转换为列表
+     * 
+     * @param roleKeys 角色key集合
+     * @return 角色列表
+     */
     private List<String> toRoleList(Set<String> roleKeys)
     {
         if (roleKeys == null || roleKeys.isEmpty())
@@ -346,12 +416,24 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         return roleList;
     }
 
+    /**
+     * 构建用户名
+     * 
+     * @param openid 微信openid
+     * @return 用户名
+     */
     private String buildUserName(String openid)
     {
         int beginIndex = Math.max(openid.length() - 24, 0);
         return "wx_" + openid.substring(beginIndex).toLowerCase();
     }
 
+    /**
+     * 构建昵称
+     * 
+     * @param loginBody 登录请求体
+     * @return 昵称
+     */
     private String buildNickName(WechatMiniappLoginBody loginBody)
     {
         if (loginBody == null || StringUtils.isEmpty(loginBody.getNickName()))
@@ -361,6 +443,12 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         return loginBody.getNickName().trim();
     }
 
+    /**
+     * 构建头像
+     * 
+     * @param loginBody 登录请求体
+     * @return 头像URL
+     */
     private String buildAvatar(WechatMiniappLoginBody loginBody)
     {
         if (loginBody == null || StringUtils.isEmpty(loginBody.getAvatarUrl()))
@@ -370,12 +458,18 @@ public class WechatMiniappAuthServiceImpl implements IWechatMiniappAuthService
         return loginBody.getAvatarUrl().trim();
     }
 
+    /**
+     * 微信Session信息内部类
+     */
     private static class WechatSession
     {
+        /** 微信openid */
         private String openid;
 
+        /** 微信unionid */
         private String unionid;
 
+        /** 微信session_key */
         private String sessionKey;
 
         public String getOpenid()

@@ -15,7 +15,8 @@ import com.moodsphere.system.user.domain.vo.WechatMiniappLoginVo;
 import com.moodsphere.system.user.service.IWechatMiniappAuthService;
 
 /**
- * 微信小程序登录认证控制器。
+ * 微信小程序登录认证控制器
+ * 提供微信小程序登录和用户信息获取接口
  */
 @RestController
 @RequestMapping("/app/auth/wechat/miniapp")
@@ -25,7 +26,11 @@ public class WechatMiniappAuthController
     private IWechatMiniappAuthService wechatMiniappAuthService;
 
     /**
-     * 微信小程序登录。
+     * 微信小程序登录
+     * 支持匿名访问，使用微信code换取登录凭证
+     * 
+     * @param loginBody 登录请求体，包含微信code等信息
+     * @return 登录结果，包含token、用户信息、角色权限等
      */
     @Anonymous
     @PostMapping("/login")
@@ -45,7 +50,9 @@ public class WechatMiniappAuthController
     }
 
     /**
-     * 获取当前登录用户信息。
+     * 获取当前登录用户信息
+     * 
+     * @return 当前登录用户信息
      */
     @GetMapping("/info")
     public AjaxResult getInfo()

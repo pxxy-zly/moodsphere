@@ -28,13 +28,19 @@ import com.moodsphere.common.utils.StringUtils;
 import com.moodsphere.record.domain.entity.BizMoodRecord;
 import com.moodsphere.record.mapper.BizMoodRecordMapper;
 
+/**
+ * AI情绪分析服务实现类
+ */
 @Service
 public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
 {
+    /** 分析状态：待分析 */
     private static final int ANALYZE_STATUS_PENDING = 0;
 
+    /** 分析状态：分析成功 */
     private static final int ANALYZE_STATUS_SUCCESS = 1;
 
+    /** 分析状态：分析失败 */
     private static final int ANALYZE_STATUS_FAIL = 2;
 
     @Autowired
@@ -43,6 +49,12 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
     @Autowired
     private BizAiAnalysisResultMapper bizAiAnalysisResultMapper;
 
+    /**
+     * 执行AI情绪分析
+     * 
+     * @param recordId 记录ID
+     * @return 分析结果
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public MoodAnalyzeResultVo runAnalyze(Long recordId)
@@ -98,6 +110,12 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         }
     }
 
+    /**
+     * 获取情绪分析结果
+     * 
+     * @param recordId 记录ID
+     * @return 分析结果
+     */
     @Override
     public MoodAnalyzeResultVo getAnalyzeResult(Long recordId)
     {
@@ -116,6 +134,14 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         return buildResultVo(recordId, analyzeStatus, result);
     }
 
+    /**
+     * 构建结果VO
+     * 
+     * @param recordId 记录ID
+     * @param analyzeStatus 分析状态
+     * @param result 分析结果
+     * @return 结果VO
+     */
     private MoodAnalyzeResultVo buildResultVo(Long recordId, Integer analyzeStatus, BizAiAnalysisResult result)
     {
         MoodAnalyzeResultVo vo = new MoodAnalyzeResultVo();
@@ -127,6 +153,9 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
 
     /**
      * 当前阶段先用规则引擎模拟 AI 返回，保证链路可联调。
+     * 
+     * @param record 情绪记录
+     * @return 分析结果
      */
     private BizAiAnalysisResult buildMockResult(BizMoodRecord record)
     {
@@ -160,6 +189,12 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         return result;
     }
 
+    /**
+     * 检测情绪类型
+     * 
+     * @param text 文本内容
+     * @return 情绪决策
+     */
     private EmotionDecision detectEmotion(String text)
     {
         if (containsAny(text, "suicide", "kill myself", "self harm", "自杀", "想死", "轻生", "伤害自己"))
@@ -185,6 +220,12 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         return new EmotionDecision("calm", "confused", 0, "情绪整体平稳");
     }
 
+    /**
+     * 检测场景
+     * 
+     * @param text 文本内容
+     * @return 场景类型
+     */
     private String detectScene(String text)
     {
         if (containsAny(text, "work", "office", "meeting", "工作", "公司", "开会"))
@@ -214,6 +255,13 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         return "general";
     }
 
+    /**
+     * 构建情绪评分
+     * 
+     * @param decision 情绪决策
+     * @param intensity 情绪强度
+     * @return 情绪评分映射
+     */
     private Map<String, Double> buildEmotionScores(EmotionDecision decision, Integer intensity)
     {
         double intensityRate = normalizeIntensityRate(intensity);
@@ -239,6 +287,13 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         return scoreMap;
     }
 
+    /**
+     * 构建分析摘要
+     * 
+     * @param decision 情绪决策
+     * @param keywords 关键词
+     * @return 分析摘要
+     */
     private String buildSummary(EmotionDecision decision, String keywords)
     {
         StringBuilder summary = new StringBuilder();
@@ -261,6 +316,9 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
 
     /**
      * 兼容中英文标点，提取最多 5 个关键词。
+     * 
+     * @param text 文本内容
+     * @return 关键词
      */
     private String extractKeywords(String text)
     {
@@ -294,6 +352,13 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         return text.length() <= 12 ? text : text.substring(0, 12);
     }
 
+    /**
+     * 检查文本是否包含指定关键词
+     * 
+     * @param text 文本内容
+     * @param words 关键词列表
+     * @return 是否包含
+     */
     private boolean containsAny(String text, String... words)
     {
         for (String word : words)
@@ -306,6 +371,12 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         return false;
     }
 
+    /**
+     * 标准化强度比率
+     * 
+     * @param intensity 情绪强度
+     * @return 标准化后的比率
+     */
     private double normalizeIntensityRate(Integer intensity)
     {
         if (intensity == null)
@@ -316,16 +387,33 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         return value / 10D;
     }
 
+    /**
+     * 四舍五入到指定小数位
+     * 
+     * @param value 原始值
+     * @return 四舍五入后的值
+     */
     private double round(double value)
     {
         return BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP).doubleValue();
     }
 
+    /**
+     * 安全处理风险级别
+     * 
+     * @param riskLevel 风险级别
+     * @return 安全的风险级别
+     */
     private int safeRisk(Integer riskLevel)
     {
         return riskLevel == null ? 0 : riskLevel;
     }
 
+    /**
+     * 检查记录ID
+     * 
+     * @param recordId 记录ID
+     */
     private void checkRecordId(Long recordId)
     {
         if (recordId == null || recordId <= 0)
@@ -334,21 +422,35 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         }
     }
 
+    /**
+     * 获取默认用户名
+     * 
+     * @param username 用户名
+     * @return 默认用户名
+     */
     private String defaultUsername(String username)
     {
         return StringUtils.isEmpty(username) ? "system" : username;
     }
 
+    /**
+     * 情绪决策类
+     */
     private static class EmotionDecision
     {
-        private final String primaryEmotion;
+        private final String primaryEmotion; // 主情绪
+        private final String secondaryEmotion; // 次情绪
+        private final Integer riskLevel; // 风险级别
+        private final String riskReason; // 风险原因
 
-        private final String secondaryEmotion;
-
-        private final Integer riskLevel;
-
-        private final String riskReason;
-
+        /**
+         * 构造函数
+         * 
+         * @param primaryEmotion 主情绪
+         * @param secondaryEmotion 次情绪
+         * @param riskLevel 风险级别
+         * @param riskReason 风险原因
+         */
         private EmotionDecision(String primaryEmotion, String secondaryEmotion, Integer riskLevel, String riskReason)
         {
             this.primaryEmotion = primaryEmotion;

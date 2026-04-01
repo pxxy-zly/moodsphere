@@ -20,9 +20,13 @@ import com.moodsphere.vector.domain.entity.BizEmotionVector;
 import com.moodsphere.vector.mapper.BizEmotionVectorMapper;
 import com.moodsphere.vector.service.IMoodVectorService;
 
+/**
+ * 情绪向量服务实现类
+ */
 @Service
 public class MoodVectorServiceImpl implements IMoodVectorService
 {
+    /** 分析状态：分析失败 */
     private static final int ANALYZE_STATUS_FAIL = 2;
 
     @Autowired
@@ -34,6 +38,13 @@ public class MoodVectorServiceImpl implements IMoodVectorService
     @Autowired
     private BizEmotionVectorMapper bizEmotionVectorMapper;
 
+    /**
+     * 构建情绪向量
+     * 根据AI分析结果生成情绪向量
+     * 
+     * @param recordId 记录ID
+     * @return 情绪向量实体
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public BizEmotionVector buildVector(Long recordId)
@@ -90,6 +101,12 @@ public class MoodVectorServiceImpl implements IMoodVectorService
         return latest;
     }
 
+    /**
+     * 获取情绪向量
+     * 
+     * @param recordId 记录ID
+     * @return 情绪向量实体
+     */
     @Override
     public BizEmotionVector getVector(Long recordId)
     {
@@ -102,6 +119,13 @@ public class MoodVectorServiceImpl implements IMoodVectorService
         return bizEmotionVectorMapper.selectByRecordId(recordId);
     }
 
+    /**
+     * 构建维度JSON
+     * 
+     * @param analysisResult AI分析结果
+     * @param intensityRate 情绪强度比率
+     * @return 维度JSON字符串
+     */
     private String buildDimensionJson(BizAiAnalysisResult analysisResult, double intensityRate)
     {
         JSONObject object = new JSONObject();
@@ -112,6 +136,12 @@ public class MoodVectorServiceImpl implements IMoodVectorService
         return object.toJSONString();
     }
 
+    /**
+     * 根据主情绪获取向量模板
+     * 
+     * @param primaryEmotion 主情绪
+     * @return 向量模板
+     */
     private VectorTemplate templateByEmotion(String primaryEmotion)
     {
         if (StringUtils.isEmpty(primaryEmotion))
@@ -137,12 +167,24 @@ public class MoodVectorServiceImpl implements IMoodVectorService
         }
     }
 
+    /**
+     * 计算置信度分数
+     * 
+     * @param riskLevel 风险级别
+     * @return 置信度分数
+     */
     private double calculateConfidenceScore(Integer riskLevel)
     {
         int risk = riskLevel == null ? 0 : Math.max(0, Math.min(3, riskLevel));
         return Math.max(0.35D, 0.92D - risk * 0.18D);
     }
 
+    /**
+     * 标准化情绪强度比率
+     * 
+     * @param intensity 情绪强度
+     * @return 标准化后的比率
+     */
     private double normalizeIntensityRate(Integer intensity)
     {
         if (intensity == null)
@@ -153,16 +195,33 @@ public class MoodVectorServiceImpl implements IMoodVectorService
         return value / 10D;
     }
 
+    /**
+     * 将double转换为BigDecimal
+     * 
+     * @param value 原始值
+     * @return BigDecimal值
+     */
     private BigDecimal dec(double value)
     {
         return BigDecimal.valueOf(round(Math.max(0D, Math.min(1D, value))));
     }
 
+    /**
+     * 四舍五入到指定小数位
+     * 
+     * @param value 原始值
+     * @return 四舍五入后的值
+     */
     private double round(double value)
     {
         return BigDecimal.valueOf(value).setScale(4, RoundingMode.HALF_UP).doubleValue();
     }
 
+    /**
+     * 检查记录ID
+     * 
+     * @param recordId 记录ID
+     */
     private void checkRecordId(Long recordId)
     {
         if (recordId == null || recordId <= 0)
@@ -171,31 +230,45 @@ public class MoodVectorServiceImpl implements IMoodVectorService
         }
     }
 
+    /**
+     * 获取默认用户名
+     * 
+     * @param username 用户名
+     * @return 默认用户名
+     */
     private String defaultUsername(String username)
     {
         return StringUtils.isEmpty(username) ? "system" : username;
     }
 
+    /**
+     * 情绪向量模板内部类
+     */
     private static class VectorTemplate
     {
-        private final double valence;
+        private final double valence; // 效价
+        private final double arousal; // 唤醒度
+        private final double anxiety; // 焦虑
+        private final double calmness; // 平静度
+        private final double loneliness; // 孤独感
+        private final double fatigue; // 疲劳度
+        private final double anger; // 愤怒
+        private final double hope; // 希望
+        private final double confidence; // 自信
 
-        private final double arousal;
-
-        private final double anxiety;
-
-        private final double calmness;
-
-        private final double loneliness;
-
-        private final double fatigue;
-
-        private final double anger;
-
-        private final double hope;
-
-        private final double confidence;
-
+        /**
+         * 构造函数
+         * 
+         * @param valence 效价
+         * @param arousal 唤醒度
+         * @param anxiety 焦虑
+         * @param calmness 平静度
+         * @param loneliness 孤独感
+         * @param fatigue 疲劳度
+         * @param anger 愤怒
+         * @param hope 希望
+         * @param confidence 自信
+         */
         private VectorTemplate(double valence, double arousal, double anxiety, double calmness, double loneliness, double fatigue,
                 double anger, double hope, double confidence)
         {
@@ -210,6 +283,11 @@ public class MoodVectorServiceImpl implements IMoodVectorService
             this.confidence = confidence;
         }
 
+        /**
+         * 获取中性情绪模板
+         * 
+         * @return 中性情绪向量模板
+         */
         private static VectorTemplate neutral()
         {
             return new VectorTemplate(0.50D, 0.50D, 0.40D, 0.45D, 0.40D, 0.45D, 0.30D, 0.45D, 0.50D);

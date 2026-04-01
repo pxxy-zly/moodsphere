@@ -24,6 +24,9 @@ import com.moodsphere.weather.mapper.BizWeatherMappingMapper;
 import com.moodsphere.weather.mapper.BizWeatherSnapshotMapper;
 import com.moodsphere.weather.service.IMoodWeatherService;
 
+/**
+ * 情绪天气服务实现类
+ */
 @Service
 public class MoodWeatherServiceImpl implements IMoodWeatherService
 {
@@ -39,6 +42,13 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
     @Autowired
     private BizWeatherSnapshotMapper bizWeatherSnapshotMapper;
 
+    /**
+     * 生成情绪天气
+     * 根据情绪向量生成对应的天气效果
+     * 
+     * @param recordId 记录ID
+     * @return 天气映射
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public BizWeatherMapping generateWeather(Long recordId)
@@ -97,6 +107,12 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
         return bizWeatherMappingMapper.selectByRecordId(recordId);
     }
 
+    /**
+     * 获取天气映射
+     * 
+     * @param recordId 记录ID
+     * @return 天气映射
+     */
     @Override
     public BizWeatherMapping getMapping(Long recordId)
     {
@@ -109,12 +125,24 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
         return bizWeatherMappingMapper.selectByRecordId(recordId);
     }
 
+    /**
+     * 获取今日天气快照
+     * 
+     * @return 今日天气快照
+     */
     @Override
     public BizWeatherSnapshot getTodaySnapshot()
     {
         return bizWeatherSnapshotMapper.selectByUserAndDate(SecurityUtils.getUserId(), todayDate());
     }
 
+    /**
+     * 刷新每日天气快照
+     * 
+     * @param userId 用户ID
+     * @param recordTime 记录时间
+     * @param username 用户名
+     */
     private void refreshDailySnapshot(Long userId, Date recordTime, String username)
     {
         Date snapshotDate = dateOnly(recordTime == null ? new Date() : recordTime);
@@ -161,6 +189,12 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
         bizWeatherSnapshotMapper.upsertBizWeatherSnapshot(snapshot);
     }
 
+    /**
+     * 构建映射额外参数
+     * 
+     * @param vector 情绪向量
+     * @return 额外参数JSON字符串
+     */
     private String buildMappingExtraParams(BizEmotionVector vector)
     {
         JSONObject object = new JSONObject();
@@ -173,6 +207,12 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
         return object.toJSONString();
     }
 
+    /**
+     * 构建组合向量
+     * 
+     * @param aggregate 每日向量聚合
+     * @return 组合向量JSON字符串
+     */
     private String buildCombinedVector(DailyVectorAggregateVo aggregate)
     {
         JSONObject object = new JSONObject();
@@ -188,6 +228,20 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
         return object.toJSONString();
     }
 
+    /**
+     * 构建天气配置文件
+     * 
+     * @param valence 效价
+     * @param arousal 唤醒度
+     * @param anxiety 焦虑
+     * @param calmness 平静度
+     * @param loneliness 孤独感
+     * @param fatigue 疲劳度
+     * @param anger 愤怒
+     * @param hope 希望
+     * @param confidence 自信
+     * @return 天气配置文件
+     */
     private WeatherProfile buildWeatherProfile(double valence, double arousal, double anxiety, double calmness, double loneliness,
             double fatigue, double anger, double hope, double confidence)
     {
@@ -214,22 +268,44 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
         return new WeatherProfile("cloudy", "cloudy", 2, 6, 1, 0, 3, 2, 5600, 64, "cloud");
     }
 
+    /**
+     * 安全转换BigDecimal为double
+     * 
+     * @param value BigDecimal值
+     * @return double值
+     */
     private double safeDouble(BigDecimal value)
     {
         return value == null ? 0D : value.doubleValue();
     }
 
+    /**
+     * 获取日期部分
+     * 
+     * @param date 日期
+     * @return 仅日期部分
+     */
     private Date dateOnly(Date date)
     {
         LocalDate localDate = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
         return java.sql.Date.valueOf(localDate);
     }
 
+    /**
+     * 获取今天的日期
+     * 
+     * @return 今天的日期
+     */
     private Date todayDate()
     {
         return java.sql.Date.valueOf(LocalDate.now());
     }
 
+    /**
+     * 检查记录ID
+     * 
+     * @param recordId 记录ID
+     */
     private void checkRecordId(Long recordId)
     {
         if (recordId == null || recordId <= 0)
@@ -238,35 +314,49 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
         }
     }
 
+    /**
+     * 获取默认用户名
+     * 
+     * @param username 用户名
+     * @return 默认用户名
+     */
     private String defaultUsername(String username)
     {
         return StringUtils.isEmpty(username) ? "system" : username;
     }
 
+    /**
+     * 天气配置文件内部类
+     */
     private static class WeatherProfile
     {
-        private final String weatherCode;
+        private final String weatherCode; // 天气代码
+        private final String weatherName; // 天气名称
+        private final int skyType; // 天空类型
+        private final int cloudDensity; // 云密度
+        private final int rainIntensity; // 降雨强度
+        private final int lightningIntensity; // 闪电强度
+        private final int windSpeed; // 风速
+        private final int fogIntensity; // 雾强度
+        private final int colorTemperature; // 色温
+        private final int saturation; // 饱和度
+        private final String particleStyle; // 粒子样式
 
-        private final String weatherName;
-
-        private final int skyType;
-
-        private final int cloudDensity;
-
-        private final int rainIntensity;
-
-        private final int lightningIntensity;
-
-        private final int windSpeed;
-
-        private final int fogIntensity;
-
-        private final int colorTemperature;
-
-        private final int saturation;
-
-        private final String particleStyle;
-
+        /**
+         * 构造函数
+         * 
+         * @param weatherCode 天气代码
+         * @param weatherName 天气名称
+         * @param skyType 天空类型
+         * @param cloudDensity 云密度
+         * @param rainIntensity 降雨强度
+         * @param lightningIntensity 闪电强度
+         * @param windSpeed 风速
+         * @param fogIntensity 雾强度
+         * @param colorTemperature 色温
+         * @param saturation 饱和度
+         * @param particleStyle 粒子样式
+         */
         private WeatherProfile(String weatherCode, String weatherName, int skyType, int cloudDensity, int rainIntensity,
                 int lightningIntensity, int windSpeed, int fogIntensity, int colorTemperature, int saturation, String particleStyle)
         {
