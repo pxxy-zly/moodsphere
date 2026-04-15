@@ -1,5 +1,13 @@
 <template>
   <view class="weather-page">
+    <!-- Loading State -->
+    <view v-if="loading" class="loading-overlay">
+      <view class="loading-content">
+        <text class="loading-icon">🌤️</text>
+        <text class="loading-text">正在获取天气...</text>
+      </view>
+    </view>
+
     <!-- Immersive Fixed Background CSS Layer (Changes with Swiper) -->
     <view class="bg-css-layer" :style="cssBgStyle">
       <view class="cloud cloud-1" :style="{ background: currentTheme.cloud1 }"></view>
@@ -105,7 +113,44 @@
 </template>
 
 <script>
-// 这里可以按需引入 API，例如 import { getMoodWeatherList } from '@/api/mood'
+import { getMoodWeatherToday, getMoodWeatherMapping, getMoodAnalyzeResult, getMoodRecord, getLatestMoodRecord } from '@/api/mood'
+
+const WEATHER_THEMES = {
+  sunny: { bg1: '#FFE4B5', bg2: '#FFDAB9', bg3: '#FFEFD5', cloud1: '#FFD700', cloud2: '#FFA500', cloud3: '#FFE4C4' },
+  breeze: { bg1: '#E6F3FF', bg2: '#B3D9FF', bg3: '#99CCFF', cloud1: '#FFFFFF', cloud2: '#E6F3FF', cloud3: '#CCE5FF' },
+  cloudy: { bg1: '#D3D3D3', bg2: '#C0C0C0', bg3: '#A9A9A9', cloud1: '#D3D3D3', cloud2: '#C0C0C0', cloud3: '#A9A9A9' },
+  rain: { bg1: '#4A5568', bg2: '#2D3748', bg3: '#1A202C', cloud1: '#4A5568', cloud2: '#2D3748', cloud3: '#1A202C' },
+  storm: { bg1: '#1A1A2E', bg2: '#16213E', bg3: '#0F0F1A', cloud1: '#2D3748', cloud2: '#1A202C', cloud3: '#0F0F1A' },
+  mist: { bg1: '#A0AEC0', bg2: '#CBD5E0', bg3: '#E2E8F0', cloud1: '#E2E8F0', cloud2: '#EDF2F7', cloud3: '#F7FAFC' }
+}
+
+const WEATHER_TITLES = {
+  sunny: '晴空万里',
+  breeze: '微风轻拂',
+  cloudy: '多云转阴',
+  rain: '绵绵细雨',
+  storm: '骤雨风暴',
+  mist: '薄雾朦胧'
+}
+
+const WEATHER_TYPES = {
+  sunny: 'sunset',
+  breeze: 'fog',
+  cloudy: 'fog',
+  rain: 'rainstorm',
+  storm: 'rainstorm',
+  mist: 'fog'
+}
+
+const EMOTION_SUGGESTS = {
+  happy: '保持这份愉悦，可以尝试与朋友分享你的好心情',
+  calm: '心境平和，适合做些放松的活动，如阅读或冥想',
+  anxious: '焦虑情绪需要关注，尝试深呼吸或进行轻度运动',
+  sad: '允许自己感受情绪，可以听些舒缓的音乐或与朋友倾诉',
+  irritable: '情绪有些急躁，建议暂时离开让你烦躁的环境',
+  lonely: '孤独感来袭，可以主动联系朋友或家人',
+  default: '建议今晚早些休息，可以听一些舒缓轻音乐，明天会更好'
+}
 
 export default {
   data() {
@@ -116,108 +161,150 @@ export default {
       animFrameId: null,
       particles: [],
       ctx: null,
-      // 全新扩充的强健 Mock 数据骨架
-      weatherList: [
-        {
-          date: '2026-03-29', 
-          type: 'sunset',
-          title: '微光晚霞',
-          theme: { bg1: '#FFDFD3', bg2: '#F5D3E5', bg3: '#D4E4F9', cloud1: '#FFBFA3', cloud2: '#E2C2F4', cloud3: '#BFE4FA' },
-          aiSummary: '你今天有些疲惫，也带着一点想被理解的期待。微光透过晚霞，希望能照亮你的心房。',
-          params: { temp: '26', pressure: '1012', wind: '3.6', humidity: '45' },
-          lastRecord: '今天 18:30',
-          aiSuggest: '建议今晚早些休息，可以听一些舒缓轻音乐，或者看一本轻松的书，明天会更好。',
-          trendIcon: '📈',
-          trendTxt: '逐步向好',
-          isToday: true,
-        },
-        {
-          date: '2026-03-28', 
-          type: 'rainstorm',
-          title: '骤雨风暴',
-          theme: { bg1: '#2D3748', bg2: '#1A202C', bg3: '#4A5568', cloud1: '#4A5568', cloud2: '#2D3748', cloud3: '#1A202C' },
-          aiSummary: '昨天经历了情感的起伏，像是一阵风暴席卷而过。允许自己释放，风暴过后会有彩虹。',
-          params: { temp: '15', pressure: '998', wind: '22', humidity: '88' },
-          lastRecord: '昨天 21:15',
-          aiSuggest: '风暴已过，给自己泡杯热茶，深呼吸几次，让情绪渐渐平复下来。',
-          trendIcon: '🌧️',
-          trendTxt: '波动剧烈',
-          isToday: false,
-        },
-        {
-          date: '2026-03-27', 
-          type: 'fog',
-          title: '静夜薄雾',
-          theme: { bg1: '#A0AEC0', bg2: '#CBD5E0', bg3: '#E2E8F0', cloud1: '#E2E8F0', cloud2: '#EDF2F7', cloud3: '#F7FAFC' },
-          aiSummary: '前天有一股平静且朦胧的思绪，像轻纱薄雾，不张扬却又挥之不去。',
-          params: { temp: '18', pressure: '1008', wind: '1.2', humidity: '65' },
-          lastRecord: '前天 23:40',
-          aiSuggest: '如果你感到迷茫，不要急于寻找答案，有时候在薄雾中静行，也是一种沉淀。',
-          trendIcon: '☁️',
-          trendTxt: '平缓低沉',
-          isToday: false,
-        }
-      ]
+      loading: true,
+      todayWeather: null,
+      weatherList: []
     }
   },
   computed: {
     currentTheme() {
-      return this.weatherList[this.currentIndex] ? this.weatherList[this.currentIndex].theme : this.weatherList[0].theme;
+      const weather = this.weatherList[this.currentIndex]
+      if (!weather) return WEATHER_THEMES.cloudy
+      const code = weather.weatherCode || 'cloudy'
+      return WEATHER_THEMES[code] || WEATHER_THEMES.cloudy
     },
     cssBgStyle() {
       return `background: linear-gradient(145deg, ${this.currentTheme.bg1} 0%, ${this.currentTheme.bg2} 50%, ${this.currentTheme.bg3} 100%);`;
     }
   },
   onLoad() {
-    this.initSystemInfo();
+    this.initSystemInfo()
+    this.loadWeatherData()
   },
   onReady() {
-    this.ctx = uni.createCanvasContext('weatherCanvas', this);
-    this.initCanvasEffect();
+    this.ctx = uni.createCanvasContext('weatherCanvas', this)
   },
   onHide() {
-    if (this.animFrameId) {
-      clearInterval(this.animFrameId);
-    }
+    this.stopAnimation()
   },
   onShow() {
-    if (this.ctx && this.weatherList) {
-      this.initCanvasEffect();
-    }
+    this.loadWeatherData()
   },
   onUnload() {
-    if (this.animFrameId) {
-      clearInterval(this.animFrameId);
-    }
+    this.stopAnimation()
   },
   methods: {
     initSystemInfo() {
-      const sysInfo = uni.getSystemInfoSync();
-      this.canvasWidth = sysInfo.windowWidth;
-      this.canvasHeight = sysInfo.windowHeight;
+      const sysInfo = uni.getSystemInfoSync()
+      this.canvasWidth = sysInfo.windowWidth
+      this.canvasHeight = sysInfo.windowHeight
+    },
+    async loadWeatherData() {
+      this.loading = true
+      try {
+        const todayRes = await getMoodWeatherToday()
+        if (todayRes.data) {
+          this.todayWeather = todayRes.data
+          this.buildWeatherList(todayRes.data)
+        } else {
+          this.weatherList = [this.createEmptyWeather()]
+        }
+        this.initCanvasEffect()
+      } catch (e) {
+        console.error('加载天气数据失败', e)
+        this.weatherList = [this.createEmptyWeather()]
+      } finally {
+        this.loading = false
+      }
+    },
+    buildWeatherList(snapshot) {
+      const now = new Date()
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      
+      const weatherCode = snapshot.weatherCode || 'cloudy'
+      const primaryEmotion = this.parseCombinedVector(snapshot.combinedVector).primaryEmotion || 'calm'
+      
+      const today = {
+        date: todayStr,
+        type: WEATHER_TYPES[weatherCode] || 'fog',
+        title: WEATHER_TITLES[weatherCode] || '多云',
+        theme: WEATHER_THEMES[weatherCode] || WEATHER_THEMES.cloudy,
+        aiSummary: snapshot.aiSummary || this.getEmotionSuggest(primaryEmotion),
+        params: {
+          temp: this.estimateTemp(weatherCode),
+          pressure: this.estimatePressure(weatherCode),
+          wind: snapshot.windSpeed || 3,
+          humidity: this.estimateHumidity(weatherCode, snapshot.rainIntensity)
+        },
+        lastRecord: this.formatRecordTime(snapshot.recordTime),
+        aiSuggest: this.getEmotionSuggest(primaryEmotion),
+        trendIcon: snapshot.recordCount > 1 ? '📈' : '📍',
+        trendTxt: snapshot.recordCount > 1 ? '今日多记录' : '今日单次',
+        isToday: true,
+        snapshot: snapshot
+      }
+      
+      this.weatherList = [today]
+      this.currentIndex = 0
+    },
+    parseCombinedVector(vectorJson) {
+      if (!vectorJson) return {}
+      try {
+        return typeof vectorJson === 'string' ? JSON.parse(vectorJson) : vectorJson
+      } catch {
+        return {}
+      }
+    },
+    createEmptyWeather() {
+      return {
+        date: this.getTodayString(),
+        type: 'fog',
+        title: '等待天气',
+        theme: WEATHER_THEMES.cloudy,
+        aiSummary: '今日暂无心情记录，去记录一条吧',
+        params: { temp: '--', pressure: '--', wind: '--', humidity: '--' },
+        lastRecord: '--',
+        aiSuggest: '点击下方按钮，记录你的第一份心情',
+        trendIcon: '🌱',
+        trendTxt: '开始旅程',
+        isToday: true
+      }
+    },
+    getTodayString() {
+      const now = new Date()
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    },
+    formatRecordTime(time) {
+      if (!time) return '暂无记录'
+      const d = new Date(time)
+      return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+    },
+    estimateTemp(code) {
+      const temps = { sunny: 28, breeze: 22, cloudy: 18, rain: 15, storm: 12, mist: 16 }
+      return temps[code] || 20
+    },
+    estimatePressure(code) {
+      const pressures = { sunny: 1018, breeze: 1015, cloudy: 1012, rain: 1005, storm: 995, mist: 1010 }
+      return pressures[code] || 1012
+    },
+    estimateHumidity(code, rainIntensity) {
+      if (rainIntensity) return Math.min(95, 50 + rainIntensity * 8)
+      const humidities = { sunny: 40, breeze: 55, cloudy: 65, rain: 85, storm: 95, mist: 80 }
+      return humidities[code] || 60
+    },
+    getEmotionSuggest(emotion) {
+      return EMOTION_SUGGESTS[emotion] || EMOTION_SUGGESTS.default
     },
     onSwiperChange(e) {
-      this.currentIndex = e.detail.current;
-      this.initCanvasEffect();
+      this.currentIndex = e.detail.current
+      this.initCanvasEffect()
     },
     initCanvasEffect() {
-      if (this.animFrameId) clearInterval(this.animFrameId);
-      this.particles = [];
-      const activeType = this.weatherList[this.currentIndex].type;
+      if (this.animFrameId) clearInterval(this.animFrameId)
+      this.particles = []
+      const activeType = this.weatherList[this.currentIndex]?.type || 'fog'
       
-      if (activeType === 'sunset' || activeType === 'fog') {
-        // 柔和粒子飘升
-        for (let i = 0; i < 25; i++) {
-          this.particles.push({
-            x: Math.random() * this.canvasWidth,
-            y: Math.random() * this.canvasHeight,
-            size: Math.random() * 2.5 + 1.5,
-            speedY: -(Math.random() * 0.8 + 0.3),
-            alpha: Math.random() * 0.5 + 0.2
-          });
-        }
-      } else if (activeType === 'rainstorm') {
-        // 雨滴与闪电储备
+      if (activeType === 'rainstorm') {
         for (let i = 0; i < 80; i++) {
           this.particles.push({
             x: Math.random() * this.canvasWidth,
@@ -225,62 +312,87 @@ export default {
             length: Math.random() * 25 + 10,
             speedY: Math.random() * 15 + 15,
             speedX: (Math.random() - 0.5) * 3
-          });
+          })
+        }
+      } else {
+        for (let i = 0; i < 25; i++) {
+          this.particles.push({
+            x: Math.random() * this.canvasWidth,
+            y: Math.random() * this.canvasHeight,
+            size: Math.random() * 2.5 + 1.5,
+            speedY: -(Math.random() * 0.8 + 0.3),
+            alpha: Math.random() * 0.5 + 0.2
+          })
         }
       }
 
       this.animFrameId = setInterval(() => {
-        this.drawFrame(activeType);
-      }, 1000 / 30); // 30fps
+        this.drawFrame(activeType)
+      }, 1000 / 30)
     },
     drawFrame(type) {
-      if (!this.ctx) return;
-      // 清空画布
-      this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
+      if (!this.ctx) return
+      this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight)
 
-      if (type === 'sunset' || type === 'fog') {
-        this.particles.forEach(p => {
-          p.y += p.speedY;
-          if (p.y < -20) p.y = this.canvasHeight + 20;
-          this.ctx.beginPath();
-          this.ctx.arc(p.x, p.y, p.size, 0, 2 * Math.PI);
-          this.ctx.setFillStyle(`rgba(255, 255, 255, ${p.alpha})`);
-          this.ctx.fill();
-        });
-      } 
-      else if (type === 'rainstorm') {
-        // 随机闪电
+      if (type === 'rainstorm') {
         if (Math.random() < 0.03) {
-          this.ctx.setFillStyle('rgba(255, 255, 255, 0.5)');
-          this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+          this.ctx.setFillStyle('rgba(255, 255, 255, 0.5)')
+          this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight)
         }
-        // 绘制雨滴
-        this.ctx.setLineWidth(1.5);
-        this.ctx.setStrokeStyle('rgba(200, 200, 220, 0.7)');
+        this.ctx.setLineWidth(1.5)
+        this.ctx.setStrokeStyle('rgba(200, 200, 220, 0.7)')
         this.particles.forEach(p => {
-          p.y += p.speedY;
-          p.x += p.speedX;
+          p.y += p.speedY
+          p.x += p.speedX
           if (p.y > this.canvasHeight) {
-            p.y = -30;
-            p.x = Math.random() * this.canvasWidth;
+            p.y = -30
+            p.x = Math.random() * this.canvasWidth
           }
-          this.ctx.beginPath();
-          this.ctx.moveTo(p.x, p.y);
-          this.ctx.lineTo(p.x + p.speedX, p.y + p.length);
-          this.ctx.stroke();
-        });
+          this.ctx.beginPath()
+          this.ctx.moveTo(p.x, p.y)
+          this.ctx.lineTo(p.x + p.speedX, p.y + p.length)
+          this.ctx.stroke()
+        })
+      } else {
+        this.particles.forEach(p => {
+          p.y += p.speedY
+          if (p.y < -20) p.y = this.canvasHeight + 20
+          this.ctx.beginPath()
+          this.ctx.arc(p.x, p.y, p.size, 0, 2 * Math.PI)
+          this.ctx.setFillStyle(`rgba(255, 255, 255, ${p.alpha})`)
+          this.ctx.fill()
+        })
       }
-      
-      // 注意传 false 否则会重复 clear
-      this.ctx.draw(false);
+      this.ctx.draw(false)
+    },
+    stopAnimation() {
+      if (this.animFrameId) {
+        clearInterval(this.animFrameId)
+        this.animFrameId = null
+      }
     },
     goRecord() {
-      this.$tab.switchTab('/pages/record/index');
+      this.$tab.switchTab('/pages/record/index')
     },
     goDetail(item) {
-      // 占位跳转逻辑，您可在这里绑定真实路由
-      uni.showToast({ title: `查看 ${item.date} 的详细分析`, icon: 'none' });
-      // this.$tab.navigateTo(`/pages/analysis/index?date=${item.date}`)
+      if (item.snapshot && item.snapshot.recordId) {
+        this.$tab.navigateTo(`/pages/record/result?recordId=${item.snapshot.recordId}`)
+      } else {
+        this.fetchLatestRecordAndNavigate()
+      }
+    },
+    async fetchLatestRecordAndNavigate() {
+      try {
+        const res = await getLatestMoodRecord()
+        const latestRecord = res.data
+        if (latestRecord && latestRecord.id) {
+          this.$tab.navigateTo(`/pages/record/result?recordId=${latestRecord.id}`)
+        } else {
+          uni.showToast({ title: '暂无详细记录，请先记录心情', icon: 'none' })
+        }
+      } catch (e) {
+        uni.showToast({ title: '获取记录失败', icon: 'none' })
+      }
     }
   }
 }
@@ -294,6 +406,44 @@ export default {
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
   color: #fff;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #fff;
+}
+
+.loading-icon {
+  font-size: 80rpx;
+  margin-bottom: 24rpx;
+  animation: float 2s ease-in-out infinite;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  opacity: 0.9;
+  letter-spacing: 2rpx;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10rpx); }
 }
 
 /* Base gradients and clouds */
