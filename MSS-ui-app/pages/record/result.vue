@@ -18,20 +18,20 @@
       <view class="card ai-card">
         <view class="card-header">
           <view class="card-title">🤖 AI 情绪分析</view>
-          <view class="emotion-badge" :class="getRiskClass(analysis ? analysis.riskLevel : null)">
-            {{ getRiskText(analysis ? analysis.riskLevel : null) }}
+          <view class="emotion-badge" :class="analysis ? getRiskClass(analysis.riskLevel) : 'risk-none'">
+            {{ analysis ? getRiskText(analysis.riskLevel) : '安全' }}
           </view>
         </view>
         
         <view class="emotion-display">
           <view class="emotion-main">
-            <text class="emotion-icon">{{ getEmotionEmoji(analysis ? analysis.primaryEmotion : '') }}</text>
+            <text class="emotion-icon">{{ analysis ? getEmotionEmoji(analysis.primaryEmotion) : '😐' }}</text>
             <text class="emotion-name">{{ analysis ? analysis.primaryEmotion : '--' }}</text>
             <text class="emotion-label">主情绪</text>
           </view>
           <view class="emotion-arrow">→</view>
           <view class="emotion-sub">
-            <text class="emotion-icon">{{ getEmotionEmoji(analysis ? analysis.secondaryEmotion : '') }}</text>
+            <text class="emotion-icon">{{ analysis ? getEmotionEmoji(analysis.secondaryEmotion) : '😐' }}</text>
             <text class="emotion-name">{{ analysis ? analysis.secondaryEmotion : '--' }}</text>
             <text class="emotion-label">次情绪</text>
           </view>
@@ -200,7 +200,6 @@ export default {
         this.vector = vectorRes.data || null
         this.weather = weatherRes.data || null
       } catch (error) {
-        // 允许在分析进行中无向量/天气结果
         if (this.analyzeStatus !== 0) {
           throw error
         }
@@ -531,7 +530,7 @@ export default {
 
 .ghost-btn {
   margin-top: 16rpx;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 259, 0.9);
   color: #4F46E5;
   border: 2rpx solid #4F46E5;
   box-shadow: none;
