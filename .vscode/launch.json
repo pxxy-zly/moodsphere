@@ -1,6 +1,24 @@
 {
   "version": "0.2.0",
+  "compounds": [
+    {
+      "name": "MSS Full Stack",
+      "configurations": ["MSS AI Service (Debug)", "MSS Backend", "MSS PC Frontend"]
+    }
+  ],
   "configurations": [
+    {
+      "type": "debugpy",
+      "name": "MSS AI Service (Debug)",
+      "request": "launch",
+      "python": "${workspaceFolder}/MSS-backend/py-ai-service/.venv/Scripts/python.exe",
+      "module": "uvicorn",
+      "args": ["app.main:app", "--host", "0.0.0.0", "--port", "9011"],
+      "cwd": "${workspaceFolder}/MSS-backend/py-ai-service",
+      "envFile": "${workspaceFolder}/MSS-backend/py-ai-service/.env",
+      "justMyCode": true,
+      "console": "integratedTerminal"
+    },
     {
       "type": "java",
       "name": "MSS Backend",
@@ -12,7 +30,11 @@
       "env": {
         "MAVEN_OPTS": "-Xmx2g",
         "WECHAT_MINIAPP_APPID": "wx313bd8559c50679f",
-        "WECHAT_MINIAPP_SECRET": "5d32b184c9c25ec542ea24a1c5255180"
+        "WECHAT_MINIAPP_SECRET": "5d32b184c9c25ec542ea24a1c5255180",
+        "MOOD_AI_PY_ENABLED": "true",
+        "MOOD_AI_PY_BASE_URL": "http://127.0.0.1:9011",
+        "MOOD_AI_PY_ANALYZE_PATH": "/v1/mood/analyze",
+        "MOOD_AI_PY_TOKEN": "your_internal_token"
       },
       "console": "integratedTerminal"
     },

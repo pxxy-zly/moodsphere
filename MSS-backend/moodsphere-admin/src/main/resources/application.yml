@@ -149,6 +149,16 @@ wechat:
     appid: ${WECHAT_MINIAPP_APPID:}
     secret: ${WECHAT_MINIAPP_SECRET:}
 
+moodsphere:
+  ai:
+    python:
+      enabled: ${MOOD_AI_PY_ENABLED:false}
+      base-url: ${MOOD_AI_PY_BASE_URL:http://127.0.0.1:9001}
+      analyze-path: ${MOOD_AI_PY_ANALYZE_PATH:/v1/mood/analyze}
+      token: ${MOOD_AI_PY_TOKEN:}
+      timeout-ms: ${MOOD_AI_PY_TIMEOUT_MS:8000}
+      fallback-to-mock: ${MOOD_AI_PY_FALLBACK_TO_MOCK:true}
+
 security:
   pc-login:
     block-app-user: true

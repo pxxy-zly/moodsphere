@@ -22,6 +22,7 @@ import com.moodsphere.analyze.domain.entity.BizAiAnalysisResult;
 import com.moodsphere.analyze.domain.vo.MoodAnalyzeResultVo;
 import com.moodsphere.analyze.mapper.BizAiAnalysisResultMapper;
 import com.moodsphere.analyze.service.IMoodAiAnalyzeService;
+import com.moodsphere.analyze.service.client.PythonMoodAnalyzeClient;
 import com.moodsphere.common.exception.ServiceException;
 import com.moodsphere.common.utils.SecurityUtils;
 import com.moodsphere.common.utils.StringUtils;
@@ -49,6 +50,9 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
     @Autowired
     private BizAiAnalysisResultMapper bizAiAnalysisResultMapper;
 
+    @Autowired
+    private PythonMoodAnalyzeClient pythonMoodAnalyzeClient;
+
     /**
      * 执行AI情绪分析
      * 
@@ -75,25 +79,16 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
         long startMillis = System.currentTimeMillis();
         try
         {
-            BizAiAnalysisResult result = buildMockResult(record);
+            BizAiAnalysisResult result = pythonMoodAnalyzeClient.analyze(record, userId);
+            if (result == null)
+            {
+                result = buildMockResult(record);
+            }
             Date now = new Date();
-            result.setRecordId(recordId);
-            result.setStatus(1);
-            result.setDelFlag(0);
-            result.setAnalysisAt(now);
-            result.setAnalysisCostMs((int) Math.max(1L, System.currentTimeMillis() - startMillis));
-            result.setRequestId(UUID.randomUUID().toString().replace("-", ""));
-            result.setProvider("mock-provider");
-            result.setModelName("rule-engine-v1");
-            result.setModelVersion("1.0.0");
-            result.setPromptVersion("p0-mock-v1");
-            result.setCreateBy(username);
-            result.setCreateTime(now);
-            result.setUpdateBy(username);
-            result.setUpdateTime(now);
+            fillResultMetadata(result, recordId, username, now, startMillis);
 
             bizAiAnalysisResultMapper.upsertBizAiAnalysisResult(result);
-            bizMoodRecordMapper.updateAnalyzeResult(recordId, ANALYZE_STATUS_SUCCESS, result.getRiskLevel(), username, now);
+            bizMoodRecordMapper.updateAnalyzeResult(recordId, ANALYZE_STATUS_SUCCESS, safeRisk(result.getRiskLevel()), username, now);
 
             BizAiAnalysisResult latest = bizAiAnalysisResultMapper.selectByRecordId(recordId);
             return buildResultVo(recordId, ANALYZE_STATUS_SUCCESS, latest == null ? result : latest);
@@ -108,6 +103,51 @@ public class MoodAiAnalyzeServiceImpl implements IMoodAiAnalyzeService
             bizMoodRecordMapper.updateAnalyzeResult(recordId, ANALYZE_STATUS_FAIL, safeRisk(record.getRiskLevel()), username, new Date());
             throw new ServiceException("AI分析失败，请稍后重试");
         }
+    }
+
+    /**
+     * 补全分析结果公共字段
+     * 
+     * @param result 分析结果
+     * @param recordId 记录ID
+     * @param username 用户名
+     * @param now 当前时间
+     * @param startMillis 开始时间戳
+     */
+    private void fillResultMetadata(BizAiAnalysisResult result, Long recordId, String username, Date now, long startMillis)
+    {
+        result.setRecordId(recordId);
+        result.setStatus(ANALYZE_STATUS_SUCCESS);
+        result.setDelFlag(0);
+        result.setAnalysisAt(now);
+        if (result.getAnalysisCostMs() == null || result.getAnalysisCostMs() <= 0)
+        {
+            result.setAnalysisCostMs((int) Math.max(1L, System.currentTimeMillis() - startMillis));
+        }
+        if (StringUtils.isEmpty(result.getRequestId()))
+        {
+            result.setRequestId(UUID.randomUUID().toString().replace("-", ""));
+        }
+        if (StringUtils.isEmpty(result.getProvider()))
+        {
+            result.setProvider("mock-provider");
+        }
+        if (StringUtils.isEmpty(result.getModelName()))
+        {
+            result.setModelName("rule-engine-v1");
+        }
+        if (StringUtils.isEmpty(result.getModelVersion()))
+        {
+            result.setModelVersion("1.0.0");
+        }
+        if (StringUtils.isEmpty(result.getPromptVersion()))
+        {
+            result.setPromptVersion("p0-mock-v1");
+        }
+        result.setCreateBy(username);
+        result.setCreateTime(now);
+        result.setUpdateBy(username);
+        result.setUpdateTime(now);
     }
 
     /**
