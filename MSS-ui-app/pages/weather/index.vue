@@ -109,6 +109,7 @@
         </scroll-view>
       </swiper-item>
     </swiper>
+    <custom-tab-bar ref="customTabBar"></custom-tab-bar>
   </view>
 </template>
 
@@ -188,12 +189,21 @@ export default {
     this.stopAnimation()
   },
   onShow() {
+    this.syncTabBarSelected()
     this.loadWeatherData()
   },
   onUnload() {
     this.stopAnimation()
   },
   methods: {
+    syncTabBarSelected() {
+      this.$nextTick(() => {
+        const tabBar = this.$refs && this.$refs.customTabBar
+        if (tabBar && typeof tabBar.syncSelectedByRoute === 'function') {
+          tabBar.syncSelectedByRoute()
+        }
+      })
+    },
     initSystemInfo() {
       const sysInfo = uni.getSystemInfoSync()
       this.canvasWidth = sysInfo.windowWidth

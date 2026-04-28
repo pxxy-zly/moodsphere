@@ -95,6 +95,7 @@
 
       <view class="bottom-spacer"></view>
     </scroll-view>
+    <custom-tab-bar ref="customTabBar"></custom-tab-bar>
   </view>
 </template>
 
@@ -109,6 +110,19 @@ export default {
         { name: '个人成长', percent: 28 },
         { name: '家庭聚餐', percent: 15 }
       ]
+    }
+  },
+  onShow() {
+    this.syncTabBarSelected()
+  },
+  methods: {
+    syncTabBarSelected() {
+      this.$nextTick(() => {
+        const tabBar = this.$refs && this.$refs.customTabBar
+        if (tabBar && typeof tabBar.syncSelectedByRoute === 'function') {
+          tabBar.syncSelectedByRoute()
+        }
+      })
     }
   }
 }
@@ -279,7 +293,7 @@ export default {
 .hlt-title { font-size: 28rpx; font-weight: 600; color: #2D3748; margin-bottom: 12rpx; display: block;}
 .hlt-desc { font-size: 26rpx; color: #64748B; line-height: 1.6; font-style: italic;}
 
-.bottom-spacer { height: 80rpx; }
+.bottom-spacer { height: 220rpx; }
 
 @keyframes fadeUp {
   0% { opacity: 0; transform: translateY(10rpx); }

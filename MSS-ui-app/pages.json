@@ -9,13 +9,14 @@
     {
       "path": "pages/weather/index",
       "style": {
-        "navigationBarTitleText": "情绪天气"
+        "navigationBarTitleText": "情绪天气",
+		"navigationStyle": "custom"
       }
     },
     {
       "path": "pages/record/index",
       "style": {
-        "navigationBarTitleText": "记录"
+        "navigationBarTitleText": "心情不打烊，记录不重样"
       }
     },
     {
@@ -27,19 +28,22 @@
     {
       "path": "pages/globe/index",
       "style": {
-        "navigationBarTitleText": "星球"
+        "navigationBarTitleText": "星球",
+		"navigationStyle": "custom"
       }
     },
     {
       "path": "pages/report/index",
       "style": {
-        "navigationBarTitleText": "报告"
+        "navigationBarTitleText": "报告",
+		"navigationStyle": "custom"
       }
     },
     {
       "path": "pages/mine/index",
       "style": {
-        "navigationBarTitleText": "我的"
+        "navigationBarTitleText": "我的",
+		"navigationStyle": "custom"
       }
     },
     {
@@ -99,7 +103,9 @@
       "packages": ["sub-weather"]
     }
   },
+  "custom-tab-bar": "custom-tab-bar/index",
   "tabBar": {
+    "custom": true,
     "color": "#666666",
     "selectedColor": "#1989fa",
     "borderStyle": "white",
@@ -112,16 +118,16 @@
         "text": "天气"
       },
       {
-        "pagePath": "pages/record/index",
-        "iconPath": "static/images/tabbar/work.png",
-        "selectedIconPath": "static/images/tabbar/work_.png",
-        "text": "记录"
-      },
-      {
         "pagePath": "pages/globe/index",
         "iconPath": "static/images/tabbar/home.png",
         "selectedIconPath": "static/images/tabbar/home_.png",
         "text": "星球"
+      },
+      {
+        "pagePath": "pages/record/index",
+        "iconPath": "static/images/tabbar/work.png",
+        "selectedIconPath": "static/images/tabbar/work_.png",
+        "text": "记录"
       },
       {
         "pagePath": "pages/report/index",

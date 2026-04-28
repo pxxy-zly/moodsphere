@@ -24,22 +24,7 @@
         </view>
       </view>
 
-      <!-- Quick Mood Tags -->
-      <view class="section-title">快捷情绪</view>
-      <view class="tags-grid">
-        <view 
-          v-for="(tag, index) in moodTags" 
-          :key="tag.t" 
-          class="mood-tag" 
-          :class="'tag-c' + (index % 4)"
-          @click="appendTag(tag.t)"
-        >
-          <text class="tag-emoji">{{ tag.e }}</text>
-          <text class="tag-label">{{ tag.t }}</text>
-        </view>
-      </view>
-
-      <!-- Emotion Intensity Slider -->
+      <!-- Emotion Intensity Slider (Moved under Text Area) -->
       <view class="intensity-section">
         <view class="section-title flex-between">
           <text>情绪强度</text>
@@ -62,20 +47,7 @@
         </view>
       </view>
 
-      <!-- Scene Tags -->
-      <view class="section-title">生活场景</view>
-      <view class="scene-tags">
-        <view 
-          v-for="sc in sceneTags" 
-          :key="sc" 
-          class="scene-pill" 
-          @click="appendTag(sc)"
-        >
-          {{ sc }}
-        </view>
-      </view>
-
-      <!-- Bottom Settings & Submit -->
+      <!-- Bottom Settings & Submit (Moved back to main flow) -->
       <view class="bottom-area">
         <view class="setting-row">
           <view class="setting-info">
@@ -91,6 +63,52 @@
       </view>
 
     </view>
+    
+    <!-- Combined Tags Section (Fixed to bottom above tabbar) -->
+    <view class="fixed-bottom-bar">
+      <view class="tags-container">
+        <view class="section-title flex-between" @click="toggleTags">
+          <text>快捷选择</text>
+          <view class="expand-icon" :class="{'icon-rotated': isTagsExpanded}">
+            <text class="arrow">▼</text>
+          </view>
+        </view>
+        
+        <view class="tags-content" :class="{'tags-expanded': isTagsExpanded}">
+          <view class="tags-inner">
+            <view class="sub-title">快捷情绪</view>
+            <view class="tags-grid">
+              <view 
+                v-for="(tag, index) in moodTags" 
+                :key="tag.t" 
+                class="mood-tag" 
+                :class="'tag-c' + (index % 4)"
+                @click="appendTag(tag.t)"
+              >
+                <text class="tag-emoji">{{ tag.e }}</text>
+                <text class="tag-label">{{ tag.t }}</text>
+              </view>
+            </view>
+
+            <view class="sub-title">生活场景</view>
+            <view class="scene-tags">
+              <view 
+                v-for="sc in sceneTags" 
+                :key="sc" 
+                class="scene-pill" 
+                @click="appendTag(sc)"
+              >
+                {{ sc }}
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    
+    <!-- Placeholder for fixed bottom bar -->
+    <view class="bottom-placeholder"></view>
+    <custom-tab-bar ref="customTabBar"></custom-tab-bar>
   </view>
 </template>
 
@@ -101,6 +119,7 @@ export default {
   data() {
     return {
       submitting: false,
+      isTagsExpanded: false,
       form: {
         contentText: '',
         emotionIntensity: 5,
@@ -115,7 +134,21 @@ export default {
       sceneTags: ['💼 工作', '📚 学习', '🏠 家庭', '🏃 运动', '☕ 休闲']
     }
   },
+  onShow() {
+    this.syncTabBarSelected()
+  },
   methods: {
+    syncTabBarSelected() {
+      this.$nextTick(() => {
+        const tabBar = this.$refs && this.$refs.customTabBar
+        if (tabBar && typeof tabBar.syncSelectedByRoute === 'function') {
+          tabBar.syncSelectedByRoute()
+        }
+      })
+    },
+    toggleTags() {
+      this.isTagsExpanded = !this.isTagsExpanded;
+    },
     appendTag(txt) {
       const cleanTxt = txt.replace(/.*? \s*/g, '').trim(); 
       if(this.form.contentText.includes(cleanTxt)) return;
@@ -193,7 +226,7 @@ export default {
 .record-page {
   min-height: 100vh;
   background: linear-gradient(180deg, #FBFDFF 0%, #F5F7FA 100%);
-  padding: 40rpx 32rpx;
+  padding: 40rpx 32rpx 230rpx;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
   box-sizing: border-box;
 }
@@ -307,7 +340,63 @@ export default {
 }
 .scene-pill:active { background: #F7FAFC; transform: scale(0.96); }
 
-/* Bottom Area */
+/* Tags Container & Animation */
+.tags-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 36rpx;
+  padding: 30rpx 40rpx;
+  box-shadow: 0 -10rpx 30rpx rgba(136, 152, 170, 0.08);
+  margin-bottom: 0;
+  pointer-events: auto;
+}
+.tags-container .section-title {
+  margin-bottom: 0;
+  padding: 10rpx 0;
+}
+.expand-icon {
+  transition: transform 0.3s ease;
+  color: #A0AEC0;
+}
+.icon-rotated {
+  transform: rotate(180deg);
+}
+.tags-content {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+.tags-expanded {
+  grid-template-rows: 1fr;
+}
+.tags-inner {
+  overflow: hidden;
+}
+.sub-title {
+  font-size: 26rpx; color: #718096;
+  margin: 30rpx 0 20rpx 10rpx;
+}
+.tags-grid, .scene-tags { margin-bottom: 20rpx; }
+
+/* Bottom Area (Moved to main flow) */
+.bottom-placeholder {
+  height: 200rpx; /* Adjusted for tags container */
+  width: 100%;
+}
+.fixed-bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(200rpx + env(safe-area-inset-bottom)); /* Same offset to clear tabbar */
+  background: linear-gradient(180deg, rgba(245,247,250,0) 0%, #F5F7FA 30%, #F5F7FA 100%);
+  padding: 10rpx 32rpx 40rpx;
+  z-index: 99;
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+  pointer-events: none; /* Pass clicks through gradient */
+}
+
 .setting-row {
   display: flex; justify-content: space-between; align-items: center;
   background: #fff; padding: 30rpx 40rpx; border-radius: 36rpx;
@@ -326,7 +415,7 @@ export default {
   line-height: 104rpx;
   font-size: 34rpx; font-weight: 500; letter-spacing: 4rpx;
   box-shadow: 0 16rpx 40rpx rgba(255, 154, 158, 0.35);
-  margin-bottom: 60rpx; /* Give room at bottom */
+  margin-bottom: 60rpx;
 }
 .submit-btn:after { display: none; }
 .submit-btn:active { transform: translateY(4rpx); box-shadow: 0 8rpx 20rpx rgba(255, 154, 158, 0.2); }

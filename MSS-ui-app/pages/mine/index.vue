@@ -101,13 +101,24 @@
         </view>
       </view>
     </view>
-
+    <custom-tab-bar ref="customTabBar"></custom-tab-bar>
   </view>
 </template>
 
 <script>
 export default {
+  onShow() {
+    this.syncTabBarSelected()
+  },
   methods: {
+    syncTabBarSelected() {
+      this.$nextTick(() => {
+        const tabBar = this.$refs && this.$refs.customTabBar
+        if (tabBar && typeof tabBar.syncSelectedByRoute === 'function') {
+          tabBar.syncSelectedByRoute()
+        }
+      })
+    },
     mockClick(name) {
       uni.showToast({
         title: `进入 ${name}`,
@@ -124,7 +135,7 @@ export default {
   min-height: 100vh;
   background: #F8FAFC;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
-  padding-bottom: 80rpx;
+  padding-bottom: 220rpx;
 }
 
 /* Hero Card */

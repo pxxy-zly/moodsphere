@@ -80,7 +80,7 @@
       <text class="hint-text">长按星球 释放你的心情共鸣</text>
       <view class="pulse-ring"></view>
     </view>
-
+    <custom-tab-bar ref="customTabBar"></custom-tab-bar>
   </view>
 </template>
 
@@ -90,6 +90,19 @@ export default {
     return {
       scope: 'global', // global | national
       time: 'today'   // realtime | today
+    }
+  },
+  onShow() {
+    this.syncTabBarSelected()
+  },
+  methods: {
+    syncTabBarSelected() {
+      this.$nextTick(() => {
+        const tabBar = this.$refs && this.$refs.customTabBar
+        if (tabBar && typeof tabBar.syncSelectedByRoute === 'function') {
+          tabBar.syncSelectedByRoute()
+        }
+      })
     }
   }
 }
@@ -316,7 +329,7 @@ export default {
 /* Bottom Hint */
 .bottom-hint {
   position: absolute;
-  bottom: 80rpx;
+  bottom: 200rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
