@@ -135,30 +135,22 @@ export default {
     }
   },
   onShow() {
-    this.syncTabBarSelected()
+    this.$store.dispatch('setTabBarSelected', 2)
   },
   methods: {
-    syncTabBarSelected() {
-      this.$nextTick(() => {
-        const tabBar = this.$refs && this.$refs.customTabBar
-        if (tabBar && typeof tabBar.syncSelectedByRoute === 'function') {
-          tabBar.syncSelectedByRoute()
-        }
-      })
-    },
     toggleTags() {
-      this.isTagsExpanded = !this.isTagsExpanded;
+      this.isTagsExpanded = !this.isTagsExpanded
     },
     appendTag(txt) {
-      const cleanTxt = txt.replace(/.*? \s*/g, '').trim(); 
-      if(this.form.contentText.includes(cleanTxt)) return;
-      this.form.contentText += (this.form.contentText ? '，' : '') + cleanTxt;
+      const cleanTxt = txt.replace(/.*? \s*/g, '').trim()
+      if (this.form.contentText.includes(cleanTxt)) return
+      this.form.contentText += (this.form.contentText ? '，' : '') + cleanTxt
     },
     mockAction(type) {
-      if(this.$modal && this.$modal.msgError) {
-        this.$modal.msgError(`${type} 暂未开放`);
+      if (this.$modal && this.$modal.msgError) {
+        this.$modal.msgError(`${type} 暂未开放`)
       } else {
-        uni.showToast({ title: `${type} 暂未开放`, icon: 'none' });
+        uni.showToast({ title: `${type} 暂未开放`, icon: 'none' })
       }
     },
     handleIntensityChange(event) {
@@ -179,8 +171,8 @@ export default {
       }
       this.submitting = true
       
-      if(this.$modal && this.$modal.loading) this.$modal.loading('正在生成天气结果，请稍候...');
-      else uni.showLoading({ title: '生成中...' });
+      if (this.$modal && this.$modal.loading) this.$modal.loading('正在生成天气结果，请稍候...')
+      else uni.showLoading({ title: '生成中...' })
 
       try {
         const createRes = await createMoodRecord({
@@ -197,16 +189,16 @@ export default {
         await buildMoodVector(recordId)
         await generateMoodWeather(recordId)
 
-        if(this.$modal && this.$modal.closeLoading) this.$modal.closeLoading();
-        else uni.hideLoading();
+        if (this.$modal && this.$modal.closeLoading) this.$modal.closeLoading()
+        else uni.hideLoading()
 
         this.$tab.navigateTo(`/pages/record/result?recordId=${recordId}`)
       } catch (error) {
-        if(this.$modal && this.$modal.closeLoading) this.$modal.closeLoading();
-        else uni.hideLoading();
+        if (this.$modal && this.$modal.closeLoading) this.$modal.closeLoading()
+        else uni.hideLoading()
 
-        if(this.$modal && this.$modal.msgError) this.$modal.msgError(this.parseError(error));
-        else uni.showToast({ title: this.parseError(error), icon: 'none' });
+        if (this.$modal && this.$modal.msgError) this.$modal.msgError(this.parseError(error))
+        else uni.showToast({ title: this.parseError(error), icon: 'none' })
       } finally {
         this.submitting = false
       }

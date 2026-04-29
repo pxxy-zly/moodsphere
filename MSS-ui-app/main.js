@@ -16,6 +16,7 @@ Vue.component('custom-tab-bar', customTabBar)
 App.mpType = 'app'
 
 const app = new Vue({
+  store,
   ...App
 })
 

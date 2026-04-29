@@ -42,6 +42,21 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         limit 1
     </select>
 
+    <select id="selectTodayLatestByUserId" resultMap="BizWeatherMappingResultMap">
+        <include refid="selectBizWeatherMappingColumns" />
+        where record_id = (
+            select r.id
+            from biz_mood_record r
+            where r.user_id = #{userId}
+              and date(r.record_time) = date(#{snapshotDate})
+              and r.del_flag = 0
+            order by r.record_time desc, r.id desc
+            limit 1
+        )
+          and del_flag = 0
+        limit 1
+    </select>
+
     <insert id="upsertBizWeatherMapping" parameterType="BizWeatherMapping">
         insert into biz_weather_mapping (
             record_id, weather_code, weather_name, sky_type, cloud_density, rain_intensity, lightning_intensity, wind_speed,

@@ -40,7 +40,6 @@
 export default {
   data() {
     return {
-      selected: 0,
       tabs: [
         {
           pagePath: '/pages/weather/index',
@@ -76,33 +75,17 @@ export default {
       ]
     }
   },
-  onShow() {
-    this.syncSelectedByRoute()
-  },
-  mounted() {
-    this.syncSelectedByRoute()
+  computed: {
+    selected() {
+      return this.$store.state.app.tabBarSelected
+    }
   },
   methods: {
-    syncSelectedByRoute() {
-      const pages = getCurrentPages()
-      if (!pages || !pages.length) return
-
-      const current = pages[pages.length - 1]
-      const route = current && current.route ? current.route.split('?')[0] : ''
-      if (!route) return
-
-      const fullRoute = route.startsWith('/') ? route : `/${route}`
-      const hitIndex = this.tabs.findIndex((item) => item.pagePath === fullRoute)
-
-      if (hitIndex >= 0) {
-        this.selected = hitIndex
-      }
-    },
     switchTab(item, index) {
       if (!item || !item.pagePath) return
       if (this.selected === index) return
 
-      this.selected = index
+      this.$store.dispatch('setTabBarSelected', index)
       uni.switchTab({
         url: item.pagePath
       })

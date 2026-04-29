@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Date;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -126,6 +127,18 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
     }
 
     /**
+     * 获取今日最新动态天气映射
+     *
+     * @return 今日最新动态天气映射
+     */
+    @Override
+    public BizWeatherMapping getTodayLatestMapping()
+    {
+        Long userId = SecurityUtils.getUserId();
+        return bizWeatherMappingMapper.selectTodayLatestByUserId(userId, todayDate());
+    }
+
+    /**
      * 获取今日天气快照
      * 
      * @return 今日天气快照
@@ -133,7 +146,32 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
     @Override
     public BizWeatherSnapshot getTodaySnapshot()
     {
-        return bizWeatherSnapshotMapper.selectByUserAndDate(SecurityUtils.getUserId(), todayDate());
+        return getSnapshotByDate(todayDate());
+    }
+
+    /**
+     * 获取指定日期天气快照（日期为空时默认今日）
+     *
+     * @param snapshotDate 快照日期
+     * @return 天气快照
+     */
+    @Override
+    public BizWeatherSnapshot getSnapshotByDate(Date snapshotDate)
+    {
+        Date targetDate = dateOnly(snapshotDate == null ? new Date() : snapshotDate);
+        return bizWeatherSnapshotMapper.selectByUserAndDate(SecurityUtils.getUserId(), targetDate);
+    }
+
+    /**
+     * 获取最近天气快照列表（按日期倒序）
+     *
+     * @param limit 条数限制
+     * @return 天气快照列表
+     */
+    @Override
+    public List<BizWeatherSnapshot> listRecentSnapshots(Integer limit)
+    {
+        return bizWeatherSnapshotMapper.selectRecentByUserId(SecurityUtils.getUserId(), normalizeLimit(limit));
     }
 
     /**
@@ -299,6 +337,21 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
     private Date todayDate()
     {
         return java.sql.Date.valueOf(LocalDate.now());
+    }
+
+    /**
+     * 标准化快照列表条数
+     *
+     * @param limit 请求条数
+     * @return 标准化条数
+     */
+    private int normalizeLimit(Integer limit)
+    {
+        if (limit == null)
+        {
+            return 7;
+        }
+        return Math.max(1, Math.min(30, limit));
     }
 
     /**

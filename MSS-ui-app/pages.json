@@ -14,6 +14,12 @@
       }
     },
     {
+      "path": "pages/weather/snapshot",
+      "style": {
+        "navigationBarTitleText": "天气快照"
+      }
+    },
+    {
       "path": "pages/record/index",
       "style": {
         "navigationBarTitleText": "心情不打烊，记录不重样"

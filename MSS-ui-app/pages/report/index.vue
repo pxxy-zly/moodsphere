@@ -113,17 +113,7 @@ export default {
     }
   },
   onShow() {
-    this.syncTabBarSelected()
-  },
-  methods: {
-    syncTabBarSelected() {
-      this.$nextTick(() => {
-        const tabBar = this.$refs && this.$refs.customTabBar
-        if (tabBar && typeof tabBar.syncSelectedByRoute === 'function') {
-          tabBar.syncSelectedByRoute()
-        }
-      })
-    }
+    this.$store.dispatch('setTabBarSelected', 3)
   }
 }
 </script>

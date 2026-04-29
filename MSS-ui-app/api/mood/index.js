@@ -84,3 +84,19 @@ export function getMoodWeatherToday() {
     method: 'get'
   })
 }
+
+export function getMoodWeatherSnapshot(date) {
+  return request({
+    url: '/app/mood/weather/snapshot',
+    method: 'get',
+    params: { date }
+  })
+}
+
+export function listMoodWeatherSnapshots(limit = 7) {
+  return request({
+    url: '/app/mood/weather/snapshot/history',
+    method: 'get',
+    params: { limit }
+  })
+}

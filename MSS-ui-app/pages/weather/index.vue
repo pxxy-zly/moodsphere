@@ -99,7 +99,8 @@
                <view class="record-btn-core" @click="goRecord" v-if="item.isToday">
                  <text class="record-text">记录心情</text>
                </view>
-               
+
+               <button class="detail-btn" @click="goTodaySnapshot">查看今日天气快照</button>
                <button class="detail-btn" @click="goDetail(item)">进入详细分析</button>
              </view>
 
@@ -114,7 +115,7 @@
 </template>
 
 <script>
-import { getMoodWeatherToday, getMoodWeatherMapping, getMoodAnalyzeResult, getMoodRecord, getLatestMoodRecord } from '@/api/mood'
+import { getMoodWeatherToday, getLatestMoodRecord } from '@/api/mood'
 
 const WEATHER_THEMES = {
   sunny: { bg1: '#FFE4B5', bg2: '#FFDAB9', bg3: '#FFEFD5', cloud1: '#FFD700', cloud2: '#FFA500', cloud3: '#FFE4C4' },
@@ -163,7 +164,7 @@ export default {
       particles: [],
       ctx: null,
       loading: true,
-      todayWeather: null,
+      dynamicWeather: null,
       weatherList: []
     }
   },
@@ -180,7 +181,6 @@ export default {
   },
   onLoad() {
     this.initSystemInfo()
-    this.loadWeatherData()
   },
   onReady() {
     this.ctx = uni.createCanvasContext('weatherCanvas', this)
@@ -189,21 +189,13 @@ export default {
     this.stopAnimation()
   },
   onShow() {
-    this.syncTabBarSelected()
+    this.$store.dispatch('setTabBarSelected', 0)
     this.loadWeatherData()
   },
   onUnload() {
     this.stopAnimation()
   },
   methods: {
-    syncTabBarSelected() {
-      this.$nextTick(() => {
-        const tabBar = this.$refs && this.$refs.customTabBar
-        if (tabBar && typeof tabBar.syncSelectedByRoute === 'function') {
-          tabBar.syncSelectedByRoute()
-        }
-      })
-    },
     initSystemInfo() {
       const sysInfo = uni.getSystemInfoSync()
       this.canvasWidth = sysInfo.windowWidth
@@ -212,72 +204,59 @@ export default {
     async loadWeatherData() {
       this.loading = true
       try {
-        const todayRes = await getMoodWeatherToday()
-        if (todayRes.data) {
-          this.todayWeather = todayRes.data
-          this.buildWeatherList(todayRes.data)
-        } else {
-          this.weatherList = [this.createEmptyWeather()]
-        }
+        const dynamicRes = await getMoodWeatherToday()
+        this.dynamicWeather = dynamicRes.data || null
+        this.buildWeatherList(this.dynamicWeather)
         this.initCanvasEffect()
       } catch (e) {
         console.error('加载天气数据失败', e)
-        this.weatherList = [this.createEmptyWeather()]
+        this.weatherList = [this.createEmptyDynamicWeather()]
       } finally {
         this.loading = false
       }
     },
-    buildWeatherList(snapshot) {
-      const now = new Date()
-      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-      
-      const weatherCode = snapshot.weatherCode || 'cloudy'
-      const primaryEmotion = this.parseCombinedVector(snapshot.combinedVector).primaryEmotion || 'calm'
-      
-      const today = {
-        date: todayStr,
-        type: WEATHER_TYPES[weatherCode] || 'fog',
-        title: WEATHER_TITLES[weatherCode] || '多云',
-        theme: WEATHER_THEMES[weatherCode] || WEATHER_THEMES.cloudy,
-        aiSummary: snapshot.aiSummary || this.getEmotionSuggest(primaryEmotion),
-        params: {
-          temp: this.estimateTemp(weatherCode),
-          pressure: this.estimatePressure(weatherCode),
-          wind: snapshot.windSpeed || 3,
-          humidity: this.estimateHumidity(weatherCode, snapshot.rainIntensity)
-        },
-        lastRecord: this.formatRecordTime(snapshot.recordTime),
-        aiSuggest: this.getEmotionSuggest(primaryEmotion),
-        trendIcon: snapshot.recordCount > 1 ? '📈' : '📍',
-        trendTxt: snapshot.recordCount > 1 ? '今日多记录' : '今日单次',
-        isToday: true,
-        snapshot: snapshot
-      }
-      
-      this.weatherList = [today]
+    buildWeatherList(dynamicMapping) {
+      this.weatherList = dynamicMapping ? [this.createDynamicWeatherCard(dynamicMapping)] : [this.createEmptyDynamicWeather()]
       this.currentIndex = 0
     },
-    parseCombinedVector(vectorJson) {
-      if (!vectorJson) return {}
-      try {
-        return typeof vectorJson === 'string' ? JSON.parse(vectorJson) : vectorJson
-      } catch {
-        return {}
-      }
-    },
-    createEmptyWeather() {
+    createEmptyDynamicWeather() {
       return {
         date: this.getTodayString(),
         type: 'fog',
+        weatherCode: 'cloudy',
         title: '等待天气',
         theme: WEATHER_THEMES.cloudy,
-        aiSummary: '今日暂无心情记录，去记录一条吧',
+        aiSummary: '今日暂无可用映射，请先记录一条心情',
         params: { temp: '--', pressure: '--', wind: '--', humidity: '--' },
         lastRecord: '--',
         aiSuggest: '点击下方按钮，记录你的第一份心情',
         trendIcon: '🌱',
         trendTxt: '开始旅程',
-        isToday: true
+        isToday: true,
+        recordId: null
+      }
+    },
+    createDynamicWeatherCard(mapping) {
+      const weatherCode = mapping.weatherCode || 'cloudy'
+      return {
+        date: this.getTodayString(),
+        type: WEATHER_TYPES[weatherCode] || 'fog',
+        weatherCode: weatherCode,
+        title: mapping.weatherName || WEATHER_TITLES[weatherCode] || '多云',
+        theme: WEATHER_THEMES[weatherCode] || WEATHER_THEMES.cloudy,
+        aiSummary: '这是你今日最新记录映射出的实时天气，会随着新记录持续变化。',
+        params: {
+          temp: this.estimateTemp(weatherCode),
+          pressure: this.estimatePressure(weatherCode),
+          wind: mapping.windSpeed || 3,
+          humidity: this.estimateHumidity(weatherCode, mapping.rainIntensity)
+        },
+        lastRecord: this.formatRecordTime(mapping.updateTime || mapping.createTime),
+        aiSuggest: this.getEmotionSuggest('default'),
+        trendIcon: '📍',
+        trendTxt: '今日最新一条',
+        isToday: true,
+        recordId: mapping.recordId
       }
     },
     getTodayString() {
@@ -304,6 +283,9 @@ export default {
     },
     getEmotionSuggest(emotion) {
       return EMOTION_SUGGESTS[emotion] || EMOTION_SUGGESTS.default
+    },
+    goTodaySnapshot() {
+      this.$tab.navigateTo('/pages/weather/snapshot')
     },
     onSwiperChange(e) {
       this.currentIndex = e.detail.current
@@ -385,8 +367,8 @@ export default {
       this.$tab.switchTab('/pages/record/index')
     },
     goDetail(item) {
-      if (item.snapshot && item.snapshot.recordId) {
-        this.$tab.navigateTo(`/pages/record/result?recordId=${item.snapshot.recordId}`)
+      if (item.recordId) {
+        this.$tab.navigateTo(`/pages/record/result?recordId=${item.recordId}`)
       } else {
         this.fetchLatestRecordAndNavigate()
       }

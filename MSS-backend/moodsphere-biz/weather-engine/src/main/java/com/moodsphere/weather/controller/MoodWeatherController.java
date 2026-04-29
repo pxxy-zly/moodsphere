@@ -1,11 +1,15 @@
 package com.moodsphere.weather.controller;
 
+import java.util.Date;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moodsphere.common.core.domain.AjaxResult;
@@ -50,15 +54,38 @@ public class MoodWeatherController
     }
 
     /**
-     * 获取今日天气快照
-     * 
-     * @return 今日天气快照
+     * 获取今日当前动态天气（今日最新映射）
+     *
+     * @return 今日当前动态天气
      */
     @GetMapping("/today")
     public AjaxResult today()
     {
-        return AjaxResult.success(moodWeatherService.getTodaySnapshot());
+        return AjaxResult.success(moodWeatherService.getTodayLatestMapping());
+    }
+
+    /**
+     * 获取指定日期天气快照（日期为空时默认今日）
+     *
+     * @param date 快照日期，格式yyyy-MM-dd
+     * @return 天气快照
+     */
+    @GetMapping("/snapshot")
+    public AjaxResult snapshot(@RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") Date date)
+    {
+        return AjaxResult.success(moodWeatherService.getSnapshotByDate(date));
+    }
+
+    /**
+     * 获取最近天气快照列表（按日期倒序）
+     *
+     * @param limit 条数，默认7，最大30
+     * @return 天气快照列表
+     */
+    @GetMapping("/snapshot/history")
+    public AjaxResult snapshotHistory(@RequestParam(required = false) Integer limit)
+    {
+        return AjaxResult.success(moodWeatherService.listRecentSnapshots(limit));
     }
 }
-
 

@@ -108,17 +108,9 @@
 <script>
 export default {
   onShow() {
-    this.syncTabBarSelected()
+    this.$store.dispatch('setTabBarSelected', 4)
   },
   methods: {
-    syncTabBarSelected() {
-      this.$nextTick(() => {
-        const tabBar = this.$refs && this.$refs.customTabBar
-        if (tabBar && typeof tabBar.syncSelectedByRoute === 'function') {
-          tabBar.syncSelectedByRoute()
-        }
-      })
-    },
     mockClick(name) {
       uni.showToast({
         title: `进入 ${name}`,
