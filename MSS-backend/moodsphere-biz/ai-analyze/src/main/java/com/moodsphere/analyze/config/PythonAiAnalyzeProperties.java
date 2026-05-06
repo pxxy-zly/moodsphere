@@ -13,7 +13,7 @@ public class PythonAiAnalyzeProperties
     /**
      * 是否启用 Python AI 分析服务
      */
-    private boolean enabled = false;
+    private boolean enabled = true;
 
     /**
      * Python 服务基础地址，例如 http://127.0.0.1:9001

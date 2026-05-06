@@ -28,6 +28,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="updateBy" column="update_by" />
         <result property="delFlag" column="del_flag" />
         <result property="remark" column="remark" />
+        <result property="aiSummary" column="ai_summary" />
+        <result property="primaryEmotion" column="primary_emotion" />
+        <result property="secondaryEmotion" column="secondary_emotion" />
+        <result property="sceneRecognition" column="scene_recognition" />
+        <result property="riskLevel" column="risk_level" />
     </resultMap>
 
     <resultMap id="DailyVectorAggregateResultMap" type="com.moodsphere.weather.domain.vo.DailyVectorAggregateVo">
@@ -44,25 +49,76 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectBizWeatherSnapshotColumns">
-        select id, user_id, snapshot_date, weather_code, weather_name, sky_type, cloud_density, rain_intensity, lightning_intensity,
-               wind_speed, fog_intensity, color_temperature, saturation, particle_style, animation_seed, combined_vector, record_count,
-               create_time, create_by, update_time, update_by, del_flag, remark
-        from biz_weather_snapshot
+        select s.id, s.user_id, s.snapshot_date, s.weather_code, s.weather_name, s.sky_type, s.cloud_density, s.rain_intensity,
+               s.lightning_intensity, s.wind_speed, s.fog_intensity, s.color_temperature, s.saturation, s.particle_style,
+               s.animation_seed, s.combined_vector, s.record_count, s.create_time, s.create_by, s.update_time, s.update_by,
+               s.del_flag, s.remark,
+               (
+                   select a.ai_summary
+                   from biz_mood_record r
+                            inner join biz_ai_analysis_result a on a.record_id = r.id and a.del_flag = 0
+                   where r.user_id = s.user_id
+                     and date(r.record_time) = date(s.snapshot_date)
+                     and r.del_flag = 0
+                   order by r.record_time desc, r.id desc
+                   limit 1
+               ) as ai_summary,
+               (
+                   select a.primary_emotion
+                   from biz_mood_record r
+                            inner join biz_ai_analysis_result a on a.record_id = r.id and a.del_flag = 0
+                   where r.user_id = s.user_id
+                     and date(r.record_time) = date(s.snapshot_date)
+                     and r.del_flag = 0
+                   order by r.record_time desc, r.id desc
+                   limit 1
+               ) as primary_emotion,
+               (
+                   select a.secondary_emotion
+                   from biz_mood_record r
+                            inner join biz_ai_analysis_result a on a.record_id = r.id and a.del_flag = 0
+                   where r.user_id = s.user_id
+                     and date(r.record_time) = date(s.snapshot_date)
+                     and r.del_flag = 0
+                   order by r.record_time desc, r.id desc
+                   limit 1
+               ) as secondary_emotion,
+               (
+                   select a.scene_recognition
+                   from biz_mood_record r
+                            inner join biz_ai_analysis_result a on a.record_id = r.id and a.del_flag = 0
+                   where r.user_id = s.user_id
+                     and date(r.record_time) = date(s.snapshot_date)
+                     and r.del_flag = 0
+                   order by r.record_time desc, r.id desc
+                   limit 1
+               ) as scene_recognition,
+               (
+                   select a.risk_level
+                   from biz_mood_record r
+                            inner join biz_ai_analysis_result a on a.record_id = r.id and a.del_flag = 0
+                   where r.user_id = s.user_id
+                     and date(r.record_time) = date(s.snapshot_date)
+                     and r.del_flag = 0
+                   order by r.record_time desc, r.id desc
+                   limit 1
+               ) as risk_level
+        from biz_weather_snapshot s
     </sql>
 
     <select id="selectByUserAndDate" resultMap="BizWeatherSnapshotResultMap">
         <include refid="selectBizWeatherSnapshotColumns" />
-        where user_id = #{userId}
-          and snapshot_date = #{snapshotDate}
-          and del_flag = 0
+        where s.user_id = #{userId}
+          and s.snapshot_date = #{snapshotDate}
+          and s.del_flag = 0
         limit 1
     </select>
 
     <select id="selectRecentByUserId" resultMap="BizWeatherSnapshotResultMap">
         <include refid="selectBizWeatherSnapshotColumns" />
-        where user_id = #{userId}
-          and del_flag = 0
-        order by snapshot_date desc, id desc
+        where s.user_id = #{userId}
+          and s.del_flag = 0
+        order by s.snapshot_date desc, s.id desc
         limit #{limit}
     </select>
 

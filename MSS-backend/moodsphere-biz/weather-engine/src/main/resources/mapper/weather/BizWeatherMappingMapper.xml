@@ -26,25 +26,32 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="updateBy" column="update_by" />
         <result property="delFlag" column="del_flag" />
         <result property="remark" column="remark" />
+        <result property="aiSummary" column="ai_summary" />
+        <result property="primaryEmotion" column="primary_emotion" />
+        <result property="secondaryEmotion" column="secondary_emotion" />
+        <result property="sceneRecognition" column="scene_recognition" />
+        <result property="riskLevel" column="risk_level" />
     </resultMap>
 
     <sql id="selectBizWeatherMappingColumns">
-        select id, record_id, weather_code, weather_name, sky_type, cloud_density, rain_intensity, lightning_intensity, wind_speed,
-               fog_intensity, color_temperature, saturation, particle_style, animation_seed, extra_params, create_time, create_by,
-               update_time, update_by, del_flag, remark
-        from biz_weather_mapping
+        select m.id, m.record_id, m.weather_code, m.weather_name, m.sky_type, m.cloud_density, m.rain_intensity,
+               m.lightning_intensity, m.wind_speed, m.fog_intensity, m.color_temperature, m.saturation, m.particle_style,
+               m.animation_seed, m.extra_params, m.create_time, m.create_by, m.update_time, m.update_by, m.del_flag, m.remark,
+               a.ai_summary, a.primary_emotion, a.secondary_emotion, a.scene_recognition, a.risk_level
+        from biz_weather_mapping m
+                 left join biz_ai_analysis_result a on a.record_id = m.record_id and a.del_flag = 0
     </sql>
 
     <select id="selectByRecordId" resultMap="BizWeatherMappingResultMap">
         <include refid="selectBizWeatherMappingColumns" />
-        where record_id = #{recordId}
-          and del_flag = 0
+        where m.record_id = #{recordId}
+          and m.del_flag = 0
         limit 1
     </select>
 
     <select id="selectTodayLatestByUserId" resultMap="BizWeatherMappingResultMap">
         <include refid="selectBizWeatherMappingColumns" />
-        where record_id = (
+        where m.record_id = (
             select r.id
             from biz_mood_record r
             where r.user_id = #{userId}
@@ -53,7 +60,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             order by r.record_time desc, r.id desc
             limit 1
         )
-          and del_flag = 0
+          and m.del_flag = 0
         limit 1
     </select>
 

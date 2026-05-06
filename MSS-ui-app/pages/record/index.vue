@@ -1,113 +1,122 @@
 <template>
   <view class="record-page">
-    <view class="container">
-      
-      <!-- Text Area Card -->
+    <scroll-view scroll-y class="record-scroll" :show-scrollbar="false">
+      <view class="hero-section">
+        <text class="hero-kicker">MOOD RECORD</text>
+        <text class="hero-title">今天想记录什么？</text>
+        <text class="hero-desc">写几句也可以，不需要整理得很完整。</text>
+      </view>
+
       <view class="input-card">
         <textarea
           v-model="form.contentText"
           class="content-input"
           maxlength="500"
-          placeholder="今天发生了什么？"
+          placeholder="比如：今天会议结束后松了一口气，但也有点空..."
+          placeholder-class="content-placeholder"
           :show-confirm-bar="false"
+          :auto-height="false"
         />
         <view class="input-actions">
           <view class="action-icons">
-             <view class="icon-circle" @click="mockAction('语音输入')">
-                <text class="icon-text">🎤</text>
-             </view>
-             <view class="icon-circle" @click="mockAction('图片上传')">
-                <text class="icon-text">🖼️</text>
-             </view>
+            <view class="icon-circle" @click="mockAction('语音输入')">
+              <text class="icon-text">🎤</text>
+            </view>
+            <view class="icon-circle" @click="mockAction('图片上传')">
+              <text class="icon-text">🖼️</text>
+            </view>
           </view>
-          <view class="counter">{{ form.contentText.length }}/500</view>
+          <view class="counter" :class="{ 'counter-warn': form.contentText.length > 430 }">
+            {{ form.contentText.length }}/500
+          </view>
         </view>
       </view>
 
-      <!-- Emotion Intensity Slider (Moved under Text Area) -->
-      <view class="intensity-section">
-        <view class="section-title flex-between">
-          <text>情绪强度</text>
-          <text class="intensity-val">{{ form.emotionIntensity }}</text>
+      <view class="panel-card intensity-card">
+        <view class="section-title-row">
+          <view>
+            <text class="section-title">情绪强度</text>
+            <text class="section-desc">{{ intensityText }}</text>
+          </view>
+          <view class="intensity-badge">{{ form.emotionIntensity }}</view>
         </view>
         <view class="slider-wrapper">
-           <view class="gradient-track"></view>
-           <slider
-             class="real-slider"
-             :value="form.emotionIntensity"
-             :min="1"
-             :max="10"
-             :step="1"
-             activeColor="transparent"
-             backgroundColor="transparent"
-             block-color="#ffffff"
-             block-size="28"
-             @change="handleIntensityChange"
-           />
+          <view class="gradient-track"></view>
+          <slider
+            class="real-slider"
+            :value="form.emotionIntensity"
+            :min="1"
+            :max="10"
+            :step="1"
+            activeColor="transparent"
+            backgroundColor="transparent"
+            block-color="#ffffff"
+            block-size="28"
+            @change="handleIntensityChange"
+          />
+        </view>
+        <view class="slider-labels">
+          <text>轻微</text>
+          <text>明显</text>
+          <text>强烈</text>
         </view>
       </view>
 
-      <!-- Bottom Settings & Submit (Moved back to main flow) -->
-      <view class="bottom-area">
-        <view class="setting-row">
-          <view class="setting-info">
-            <text class="setting-label">公开到情绪星球</text>
-            <text class="setting-desc">让更多人感受到你的共鸣</text>
+      <view class="panel-card quick-card">
+        <view class="section-title-row">
+          <view>
+            <text class="section-title">快捷选择</text>
+            <text class="section-desc">点选后会自动加入记录内容</text>
           </view>
-          <switch :checked="form.isPublic === 1" color="#FFB6C1" @change="handlePublicChange" style="transform:scale(0.8)"/>
+          <view class="clear-tags" v-if="selectedTagMap.length" @click="clearSelectedTags">清空</view>
         </view>
 
-        <button class="submit-btn" :class="{'btn-loading': submitting}" :disabled="submitting" @click="handleSubmit">
-          {{ submitting ? '生成天气中...' : '提交感受' }}
-        </button>
+        <view class="sub-title">快捷情绪</view>
+        <view class="chip-grid">
+          <view
+            v-for="tag in moodTags"
+            :key="tag.t"
+            class="mood-chip"
+            :class="[{ 'chip-selected': isTagSelected(tag.t) }, 'chip-tone-' + tag.tone]"
+            @click="toggleTag(tag.t)"
+          >
+            <text class="chip-emoji">{{ tag.e }}</text>
+            <text class="chip-text">{{ tag.t }}</text>
+          </view>
+        </view>
+
+        <view class="sub-title scene-title">生活场景</view>
+        <view class="scene-tags">
+          <view
+            v-for="sc in sceneTags"
+            :key="sc.t"
+            class="scene-pill"
+            :class="{ 'scene-pill-selected': isTagSelected(sc.t) }"
+            @click="toggleTag(sc.t)"
+          >
+            <text class="scene-emoji">{{ sc.e }}</text>
+            <text>{{ sc.t }}</text>
+          </view>
+        </view>
       </view>
 
+      <view class="panel-card privacy-card">
+        <view class="privacy-copy">
+          <text class="section-title">匿名漂到情绪星球</text>
+          <text class="section-desc">仅展示匿名心情片段，不展示个人身份。</text>
+        </view>
+        <switch :checked="form.isPublic === 1" color="#5C9CE6" @change="handlePublicChange" style="transform:scale(0.82)" />
+      </view>
+
+      <view class="bottom-spacer"></view>
+    </scroll-view>
+
+    <view class="submit-dock">
+      <button class="submit-btn" :class="{ 'btn-loading': submitting }" :disabled="submitting" @click="handleSubmit">
+        {{ submitting ? '生成天气中...' : '提交感受' }}
+      </button>
     </view>
-    
-    <!-- Combined Tags Section (Fixed to bottom above tabbar) -->
-    <view class="fixed-bottom-bar">
-      <view class="tags-container">
-        <view class="section-title flex-between" @click="toggleTags">
-          <text>快捷选择</text>
-          <view class="expand-icon" :class="{'icon-rotated': isTagsExpanded}">
-            <text class="arrow">▼</text>
-          </view>
-        </view>
-        
-        <view class="tags-content" :class="{'tags-expanded': isTagsExpanded}">
-          <view class="tags-inner">
-            <view class="sub-title">快捷情绪</view>
-            <view class="tags-grid">
-              <view 
-                v-for="(tag, index) in moodTags" 
-                :key="tag.t" 
-                class="mood-tag" 
-                :class="'tag-c' + (index % 4)"
-                @click="appendTag(tag.t)"
-              >
-                <text class="tag-emoji">{{ tag.e }}</text>
-                <text class="tag-label">{{ tag.t }}</text>
-              </view>
-            </view>
 
-            <view class="sub-title">生活场景</view>
-            <view class="scene-tags">
-              <view 
-                v-for="sc in sceneTags" 
-                :key="sc" 
-                class="scene-pill" 
-                @click="appendTag(sc)"
-              >
-                {{ sc }}
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
-    </view>
-    
-    <!-- Placeholder for fixed bottom bar -->
-    <view class="bottom-placeholder"></view>
     <custom-tab-bar ref="customTabBar"></custom-tab-bar>
   </view>
 </template>
@@ -119,32 +128,74 @@ export default {
   data() {
     return {
       submitting: false,
-      isTagsExpanded: false,
+      selectedTagMap: [],
       form: {
         contentText: '',
         emotionIntensity: 5,
         isPublic: 0
       },
       moodTags: [
-        { t: '开心', e: '😊' },
-        { t: '焦虑', e: '😰' },
-        { t: '疲惫', e: '😮‍💨' },
-        { t: '平静', e: '😌' }
+        { t: '开心', e: '😊', tone: 'sun' },
+        { t: '平静', e: '😌', tone: 'calm' },
+        { t: '焦虑', e: '😰', tone: 'mist' },
+        { t: '疲惫', e: '😮‍💨', tone: 'rain' },
+        { t: '委屈', e: '💧', tone: 'rain' },
+        { t: '孤独', e: '🌙', tone: 'night' },
+        { t: '烦躁', e: '🌩️', tone: 'storm' },
+        { t: '期待', e: '🌱', tone: 'calm' },
+        { t: '困惑', e: '🌫️', tone: 'mist' },
+        { t: '温暖', e: '☀️', tone: 'sun' }
       ],
-      sceneTags: ['💼 工作', '📚 学习', '🏠 家庭', '🏃 运动', '☕ 休闲']
+      sceneTags: [
+        { t: '工作', e: '💼' },
+        { t: '学习', e: '📚' },
+        { t: '家庭', e: '🏠' },
+        { t: '关系', e: '🤝' },
+        { t: '通勤', e: '🚌' },
+        { t: '睡眠', e: '🛌' },
+        { t: '运动', e: '🏃' },
+        { t: '饮食', e: '🍜' },
+        { t: '独处', e: '🫧' },
+        { t: '社交', e: '🎈' }
+      ]
+    }
+  },
+  computed: {
+    intensityText() {
+      const value = this.form.emotionIntensity
+      if (value <= 3) return `${value} · 轻微浮现`
+      if (value <= 6) return `${value} · 有一点明显`
+      if (value <= 8) return `${value} · 很需要被看见`
+      return `${value} · 强烈涌上来`
     }
   },
   onShow() {
     this.$store.dispatch('setTabBarSelected', 2)
   },
   methods: {
-    toggleTags() {
-      this.isTagsExpanded = !this.isTagsExpanded
+    isTagSelected(tag) {
+      return this.selectedTagMap.includes(tag)
+    },
+    toggleTag(tag) {
+      if (this.isTagSelected(tag)) {
+        this.selectedTagMap = this.selectedTagMap.filter(item => item !== tag)
+        return
+      }
+      this.selectedTagMap.push(tag)
+      this.appendTag(tag)
+    },
+    clearSelectedTags() {
+      this.selectedTagMap = []
     },
     appendTag(txt) {
-      const cleanTxt = txt.replace(/.*? \s*/g, '').trim()
-      if (this.form.contentText.includes(cleanTxt)) return
-      this.form.contentText += (this.form.contentText ? '，' : '') + cleanTxt
+      const cleanTxt = String(txt || '').trim()
+      if (!cleanTxt || this.form.contentText.includes(cleanTxt)) return
+      const nextText = this.form.contentText + (this.form.contentText ? '，' : '') + cleanTxt
+      if (nextText.length > 500) {
+        uni.showToast({ title: '内容已接近上限', icon: 'none' })
+        return
+      }
+      this.form.contentText = nextText
     },
     mockAction(type) {
       if (this.$modal && this.$modal.msgError) {
@@ -162,15 +213,15 @@ export default {
     async handleSubmit() {
       const contentText = (this.form.contentText || '').trim()
       if (!contentText) {
-        if(this.$modal && this.$modal.msgError) this.$modal.msgError('请先输入记录内容');
-        else uni.showToast({ title: '请先输入记录内容', icon: 'none' });
+        if (this.$modal && this.$modal.msgError) this.$modal.msgError('请先输入记录内容')
+        else uni.showToast({ title: '请先输入记录内容', icon: 'none' })
         return
       }
       if (this.submitting) {
         return
       }
       this.submitting = true
-      
+
       if (this.$modal && this.$modal.loading) this.$modal.loading('正在生成天气结果，请稍候...')
       else uni.showLoading({ title: '生成中...' })
 
@@ -216,199 +267,365 @@ export default {
 
 <style scoped>
 .record-page {
-  min-height: 100vh;
-  background: linear-gradient(180deg, #FBFDFF 0%, #F5F7FA 100%);
-  padding: 40rpx 32rpx 230rpx;
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  background:
+    radial-gradient(circle at 8% 8%, rgba(92, 156, 230, 0.14) 0%, transparent 32%),
+    linear-gradient(180deg, #f3f8ff 0%, #f8fbff 50%, #ffffff 100%);
   box-sizing: border-box;
 }
 
-/* Card */
-.input-card {
-  background: #FFFFFF;
-  border-radius: 36rpx;
-  padding: 40rpx;
-  box-shadow: 0 16rpx 48rpx rgba(136, 152, 170, 0.05);
-  margin-bottom: 50rpx;
+.record-scroll {
+  width: 100%;
+  height: 100%;
 }
+
+.hero-section {
+  padding: 78rpx 36rpx 28rpx;
+}
+
+.hero-kicker {
+  display: block;
+  margin-bottom: 12rpx;
+  color: #5c9ce6;
+  font-size: 20rpx;
+  font-weight: 700;
+  letter-spacing: 3rpx;
+}
+
+.hero-title {
+  display: block;
+  color: #233044;
+  font-size: 48rpx;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.hero-desc {
+  display: block;
+  margin-top: 14rpx;
+  color: #7b8798;
+  font-size: 27rpx;
+  line-height: 1.45;
+}
+
+.input-card,
+.panel-card {
+  margin: 0 32rpx 28rpx;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1rpx solid rgba(255, 255, 255, 0.82);
+  border-radius: 32rpx;
+  box-shadow: 0 14rpx 40rpx rgba(92, 156, 230, 0.08);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-sizing: border-box;
+}
+
+.input-card {
+  padding: 34rpx 34rpx 26rpx;
+}
+
 .content-input {
   width: 100%;
-  height: 220rpx;
-  font-size: 32rpx;
-  color: #2D3748;
-  line-height: 1.6;
+  height: 380rpx;
+  font-size: 31rpx;
+  color: #263449;
+  line-height: 1.7;
 }
+
+.content-placeholder {
+  color: #a8b2c2;
+  font-size: 30rpx;
+  line-height: 1.65;
+}
+
 .input-actions {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 30rpx;
-  border-top: 1px solid #F0F4F8;
-  padding-top: 24rpx;
+  margin-top: 22rpx;
+  padding-top: 22rpx;
+  border-top: 1rpx solid rgba(151, 166, 190, 0.16);
 }
-.action-icons { display: flex; gap: 24rpx; }
+
+.action-icons {
+  display: flex;
+}
+
 .icon-circle {
-  width: 72rpx; height: 72rpx;
+  width: 70rpx;
+  height: 70rpx;
+  margin-right: 18rpx;
   border-radius: 50%;
-  background: #F7FAFC;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.02);
-  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f8fd;
+  border: 1rpx solid rgba(151, 166, 190, 0.12);
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.8);
+  transition: all 0.2s ease;
 }
+
 .icon-circle:active {
-  background: #E2E8F0;
   transform: scale(0.95);
+  background: #eaf1fb;
 }
-.icon-text { font-size: 32rpx; }
-.counter { font-size: 24rpx; color: #A0AEC0; font-family: sans-serif; }
 
-/* Sections */
+.icon-text {
+  font-size: 31rpx;
+}
+
+.counter {
+  color: #97a3b6;
+  font-size: 24rpx;
+}
+
+.counter-warn {
+  color: #ff8da1;
+}
+
+.panel-card {
+  padding: 30rpx 32rpx;
+}
+
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24rpx;
+}
+
 .section-title {
-  font-size: 30rpx; font-weight: 600; color: #2D3748;
-  margin-bottom: 24rpx; padding-left: 10rpx; letter-spacing: 2rpx;
+  display: block;
+  color: #263449;
+  font-size: 31rpx;
+  font-weight: 700;
+  line-height: 1.25;
 }
-.flex-between { display: flex; justify-content: space-between; align-items: baseline; }
-.intensity-val { font-size: 40rpx; font-family: "DIN Condensed", sans-serif; color: #FF9A9E; }
 
-/* Macaron tags */
-.tags-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20rpx;
-  margin-bottom: 50rpx;
+.section-desc {
+  display: block;
+  margin-top: 9rpx;
+  color: #7d899b;
+  font-size: 24rpx;
+  line-height: 1.45;
 }
-.mood-tag {
-  height: 160rpx;
-  border-radius: 32rpx;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  font-size: 28rpx; font-weight: 500;
-  color: #4A5568;
-  box-shadow: 0 12rpx 24rpx rgba(0,0,0,0.04), inset 0 6rpx 16rpx rgba(255,255,255,0.8);
-  transition: transform 0.2s;
+
+.intensity-badge {
+  min-width: 70rpx;
+  height: 70rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 36rpx;
+  font-weight: 800;
+  background: #5c9ce6;
+  box-shadow: 0 10rpx 24rpx rgba(92, 156, 230, 0.18);
 }
-.mood-tag:active { transform: scale(0.95); box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.02); }
-.tag-emoji { font-size: 48rpx; margin-bottom: 12rpx; }
-.tag-label { letter-spacing: 2rpx; }
 
-/* Macaron palettes */
-.tag-c0 { background: linear-gradient(135deg, #FFF0F0 0%, #FFE4E1 100%); } /* Pinkish */
-.tag-c1 { background: linear-gradient(135deg, #FDF7FF 0%, #E6E6FA 100%); } /* Lavender */
-.tag-c2 { background: linear-gradient(135deg, #F0FFFF 0%, #E0FFFF 100%); } /* Light Cyan */
-.tag-c3 { background: linear-gradient(135deg, #FAFFFC 0%, #F5FFFA 100%); } /* Mint */
-
-/* Slider */
-.intensity-section { margin-bottom: 50rpx; }
 .slider-wrapper {
   position: relative;
-  height: 60rpx;
-  display: flex; align-items: center;
-  padding: 0 10rpx;
+  height: 62rpx;
+  display: flex;
+  align-items: center;
 }
+
 .gradient-track {
   position: absolute;
-  top: 50%; left: 24rpx; right: 24rpx;
-  height: 12rpx; transform: translateY(-50%);
-  border-radius: 6rpx;
-  background: linear-gradient(90deg, #A8EDE9 0%, #FED6E3 50%, #FF9A9E 100%);
+  top: 50%;
+  left: 24rpx;
+  right: 24rpx;
+  height: 12rpx;
+  transform: translateY(-50%);
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, #dbeafe 0%, #93c5fd 52%, #5c9ce6 100%);
   z-index: 1;
 }
+
 .real-slider {
   width: 100%;
   margin: 0;
   z-index: 2;
 }
 
-/* Scene Pills */
-.scene-tags { display: flex; flex-wrap: wrap; gap: 24rpx; margin-bottom: 60rpx; }
-.scene-pill {
-  padding: 20rpx 44rpx;
-  background: #FFFFFF;
-  border-radius: 50rpx;
-  font-size: 28rpx; color: #4A5568;
-  box-shadow: 0 6rpx 16rpx rgba(136,152,170,0.06);
-  border: 1px solid #F0F4F8;
-  letter-spacing: 2rpx;
-  transition: all 0.2s;
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  color: #97a3b6;
+  font-size: 22rpx;
+  padding: 0 8rpx;
 }
-.scene-pill:active { background: #F7FAFC; transform: scale(0.96); }
 
-/* Tags Container & Animation */
-.tags-container {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 36rpx;
-  padding: 30rpx 40rpx;
-  box-shadow: 0 -10rpx 30rpx rgba(136, 152, 170, 0.08);
-  margin-bottom: 0;
-  pointer-events: auto;
+.quick-card {
+  padding-bottom: 34rpx;
 }
-.tags-container .section-title {
-  margin-bottom: 0;
-  padding: 10rpx 0;
+
+.clear-tags {
+  color: #5c9ce6;
+  font-size: 24rpx;
+  font-weight: 600;
+  padding: 10rpx 0 10rpx 20rpx;
 }
-.expand-icon {
-  transition: transform 0.3s ease;
-  color: #A0AEC0;
-}
-.icon-rotated {
-  transform: rotate(180deg);
-}
-.tags-content {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.3s ease;
-}
-.tags-expanded {
-  grid-template-rows: 1fr;
-}
-.tags-inner {
-  overflow: hidden;
-}
+
 .sub-title {
-  font-size: 26rpx; color: #718096;
-  margin: 30rpx 0 20rpx 10rpx;
+  margin: 4rpx 0 18rpx;
+  color: #7d899b;
+  font-size: 25rpx;
+  font-weight: 600;
 }
-.tags-grid, .scene-tags { margin-bottom: 20rpx; }
 
-/* Bottom Area (Moved to main flow) */
-.bottom-placeholder {
-  height: 200rpx; /* Adjusted for tags container */
-  width: 100%;
+.scene-title {
+  margin-top: 30rpx;
 }
-.fixed-bottom-bar {
+
+.chip-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16rpx;
+}
+
+.mood-chip {
+  min-height: 120rpx;
+  border-radius: 24rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #4a5568;
+  border: 2rpx solid transparent;
+  transition: all 0.2s ease;
+}
+
+.mood-chip:active,
+.scene-pill:active {
+  transform: scale(0.96);
+}
+
+.chip-emoji {
+  font-size: 38rpx;
+  margin-bottom: 9rpx;
+}
+
+.chip-text {
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.chip-tone-sun {
+  background: linear-gradient(135deg, #fff0f5 0%, #ffe3ec 100%);
+}
+
+.chip-tone-calm {
+  background: linear-gradient(135deg, #edf7ff 0%, #e2f0ff 100%);
+}
+
+.chip-tone-mist {
+  background: linear-gradient(135deg, #f6f8fb 0%, #eef2f7 100%);
+}
+
+.chip-tone-rain {
+  background: linear-gradient(135deg, #eef5ff 0%, #e4eefb 100%);
+}
+
+.chip-tone-night {
+  background: linear-gradient(135deg, #eef2ff 0%, #e8edff 100%);
+}
+
+.chip-tone-storm {
+  background: linear-gradient(135deg, #fff0f5 0%, #ffe5ec 100%);
+}
+
+.chip-selected {
+  border-color: rgba(92, 156, 230, 0.72);
+  box-shadow: 0 10rpx 24rpx rgba(92, 156, 230, 0.14);
+}
+
+.scene-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.scene-pill {
+  display: flex;
+  align-items: center;
+  padding: 17rpx 24rpx;
+  border-radius: 999rpx;
+  color: #4a5568;
+  font-size: 26rpx;
+  font-weight: 600;
+  background: #ffffff;
+  border: 1rpx solid rgba(151, 166, 190, 0.16);
+  box-shadow: 0 8rpx 18rpx rgba(92, 156, 230, 0.05);
+  transition: all 0.2s ease;
+}
+
+.scene-pill-selected {
+  color: #2563a8;
+  border-color: rgba(92, 156, 230, 0.66);
+  background: #edf6ff;
+}
+
+.scene-emoji {
+  margin-right: 8rpx;
+}
+
+.privacy-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 30rpx 28rpx 30rpx 32rpx;
+}
+
+.privacy-copy {
+  flex: 1;
+  padding-right: 20rpx;
+}
+
+.bottom-spacer {
+  height: 260rpx;
+}
+
+.submit-dock {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(200rpx + env(safe-area-inset-bottom)); /* Same offset to clear tabbar */
-  background: linear-gradient(180deg, rgba(245,247,250,0) 0%, #F5F7FA 30%, #F5F7FA 100%);
-  padding: 10rpx 32rpx 40rpx;
-  z-index: 99;
-  display: flex;
-  flex-direction: column;
-  gap: 24rpx;
-  pointer-events: none; /* Pass clicks through gradient */
+  bottom: calc(112rpx + env(safe-area-inset-bottom));
+  z-index: 90;
+  padding: 26rpx 32rpx 30rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(248, 251, 255, 0.92) 42%, #ffffff 100%);
+  box-sizing: border-box;
 }
-
-.setting-row {
-  display: flex; justify-content: space-between; align-items: center;
-  background: #fff; padding: 30rpx 40rpx; border-radius: 36rpx;
-  box-shadow: 0 10rpx 30rpx rgba(136,152,170,0.05);
-  margin-bottom: 50rpx;
-}
-.setting-info { display: flex; flex-direction: column; }
-.setting-label { font-size: 30rpx; color: #2D3748; font-weight: 500; letter-spacing: 2rpx; }
-.setting-desc { font-size: 24rpx; color: #A0AEC0; margin-top: 8rpx; }
 
 .submit-btn {
-  background: linear-gradient(135deg, #FF9A9E 0%, #FECFEF 100%);
-  color: #fff;
-  border-radius: 60rpx;
-  height: 104rpx;
-  line-height: 104rpx;
-  font-size: 34rpx; font-weight: 500; letter-spacing: 4rpx;
-  box-shadow: 0 16rpx 40rpx rgba(255, 154, 158, 0.35);
-  margin-bottom: 60rpx;
+  width: 100%;
+  height: 98rpx;
+  line-height: 98rpx;
+  margin: 0;
+  border-radius: 999rpx;
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 700;
+  letter-spacing: 2rpx;
+  background: #5c9ce6;
+  box-shadow: 0 16rpx 34rpx rgba(92, 156, 230, 0.22);
 }
-.submit-btn:after { display: none; }
-.submit-btn:active { transform: translateY(4rpx); box-shadow: 0 8rpx 20rpx rgba(255, 154, 158, 0.2); }
+
+.submit-btn:after {
+  display: none;
+}
+
+.submit-btn:active {
+  transform: scale(0.98);
+}
+
+.submit-btn[disabled],
+.btn-loading {
+  opacity: 0.72;
+}
 </style>

@@ -26,7 +26,13 @@
           <!-- Spacer for visual breathing room -->
           <view class="top-spacer"></view>
           
-          <view class="content-wrapper">
+          <view
+            class="content-wrapper"
+            :class="{
+              'content-wrapper--empty': !item.hasRecord,
+              'content-wrapper--dark-text': shouldUseDarkText(item)
+            }"
+          >
              <!-- Top Data Header -->
              <view class="date-header">
                <text class="date-text">{{ item.date }} {{ item.isToday ? ' (今日)' : '' }}</text>
@@ -37,8 +43,15 @@
                <text class="weather-title">{{ item.title }}</text>
              </view>
 
+             <!-- Empty State -->
+             <view v-if="!item.hasRecord" class="glass-card empty-state-card">
+               <view class="empty-mark">♡</view>
+               <text class="empty-title">心境天气还未生成</text>
+               <text class="empty-text">完成一次心情记录后，这里会呈现你的今日心境、情绪指标和分析入口。</text>
+             </view>
+
              <!-- AI Summary Card -->
-             <view class="glass-card ai-card">
+             <view v-else class="glass-card ai-card">
                <view class="card-title-row">
                  <text class="card-icon">✧</text>
                  <text class="card-title">AI 情绪摘要</text>
@@ -47,7 +60,7 @@
              </view>
 
              <!-- Weather Parameter Grid -->
-             <view class="params-grid">
+             <view v-if="item.hasRecord" class="params-grid">
                <!-- Temp -->
                <view class="param-box">
                  <text class="p-val">{{ item.params.temp }}<text class="p-unit">°C</text></text>
@@ -71,7 +84,7 @@
              </view>
 
              <!-- AI Suggestion & Trend -->
-             <view class="row-cards">
+             <view v-if="item.hasRecord" class="row-cards">
                <!-- AI Suggestion -->
                <view class="glass-card flex-2">
                  <view class="card-title-row">
@@ -91,17 +104,16 @@
              </view>
 
              <!-- Last Record -->
-             <view class="last-record-text">上次记录时间：{{ item.lastRecord }}</view>
+             <view v-if="item.hasRecord" class="last-record-text">上次记录时间：{{ item.lastRecord }}</view>
              
              <!-- Action Buttons -->
              <view class="actions-area">
-               <!-- Only show Record on today -->
-               <view class="record-btn-core" @click="goRecord" v-if="item.isToday">
-                 <text class="record-text">记录心情</text>
-               </view>
-
-               <button class="detail-btn" @click="goTodaySnapshot">查看今日天气快照</button>
-               <button class="detail-btn" @click="goDetail(item)">进入详细分析</button>
+               <button class="action-btn action-btn--ghost" @click="goTodaySnapshot">今日快照</button>
+               <button
+                 class="action-btn action-btn--primary"
+                 :class="{ 'action-btn--disabled': !item.recordId }"
+                 @click="goDetail(item)"
+               >详细分析</button>
              </view>
 
              <!-- Bottom Spacer -->
@@ -115,9 +127,10 @@
 </template>
 
 <script>
-import { getMoodWeatherToday, getLatestMoodRecord } from '@/api/mood'
+import { getMoodWeatherToday } from '@/api/mood'
 
 const WEATHER_THEMES = {
+  empty: { bg1: '#F7FBFF', bg2: '#EAF2FF', bg3: '#FFFFFF', cloud1: '#FFFFFF', cloud2: '#CFE1FF', cloud3: '#EAF2FF' },
   sunny: { bg1: '#FFE4B5', bg2: '#FFDAB9', bg3: '#FFEFD5', cloud1: '#FFD700', cloud2: '#FFA500', cloud3: '#FFE4C4' },
   breeze: { bg1: '#E6F3FF', bg2: '#B3D9FF', bg3: '#99CCFF', cloud1: '#FFFFFF', cloud2: '#E6F3FF', cloud3: '#CCE5FF' },
   cloudy: { bg1: '#D3D3D3', bg2: '#C0C0C0', bg3: '#A9A9A9', cloud1: '#D3D3D3', cloud2: '#C0C0C0', cloud3: '#A9A9A9' },
@@ -148,9 +161,15 @@ const EMOTION_SUGGESTS = {
   happy: '保持这份愉悦，可以尝试与朋友分享你的好心情',
   calm: '心境平和，适合做些放松的活动，如阅读或冥想',
   anxious: '焦虑情绪需要关注，尝试深呼吸或进行轻度运动',
+  tired: '疲惫感出现时，可以先降低任务密度，给身体一点真实的休息',
   sad: '允许自己感受情绪，可以听些舒缓的音乐或与朋友倾诉',
   irritable: '情绪有些急躁，建议暂时离开让你烦躁的环境',
   lonely: '孤独感来袭，可以主动联系朋友或家人',
+  wronged: '委屈感值得被看见，可以先写下发生了什么，再决定是否表达',
+  expect: '期待感正在升起，适合把想做的事拆成一个容易开始的小步骤',
+  warm: '温暖感很珍贵，可以把它留给自己，也可以传递给在意的人',
+  confused: '困惑时不急着马上判断，先列出你确定和不确定的部分',
+  hopeful: '希望感是很好的能量，适合给今天安排一个轻巧但明确的行动',
   default: '建议今晚早些休息，可以听一些舒缓轻音乐，明天会更好'
 }
 
@@ -223,17 +242,18 @@ export default {
       return {
         date: this.getTodayString(),
         type: 'fog',
-        weatherCode: 'cloudy',
-        title: '等待天气',
-        theme: WEATHER_THEMES.cloudy,
-        aiSummary: '今日暂无可用映射，请先记录一条心情',
+        weatherCode: 'empty',
+        title: '等待心境',
+        theme: WEATHER_THEMES.empty,
+        aiSummary: '完成一次心情记录后，这里会生成你的今日心境天气。',
         params: { temp: '--', pressure: '--', wind: '--', humidity: '--' },
         lastRecord: '--',
-        aiSuggest: '点击下方按钮，记录你的第一份心情',
+        aiSuggest: '记录后将展示你的情绪趋势和治愈建议。',
         trendIcon: '🌱',
         trendTxt: '开始旅程',
         isToday: true,
-        recordId: null
+        recordId: null,
+        hasRecord: false
       }
     },
     createDynamicWeatherCard(mapping) {
@@ -244,7 +264,7 @@ export default {
         weatherCode: weatherCode,
         title: mapping.weatherName || WEATHER_TITLES[weatherCode] || '多云',
         theme: WEATHER_THEMES[weatherCode] || WEATHER_THEMES.cloudy,
-        aiSummary: '这是你今日最新记录映射出的实时天气，会随着新记录持续变化。',
+        aiSummary: this.getUserFacingSummary(mapping.aiSummary, weatherCode, mapping.primaryEmotion),
         params: {
           temp: this.estimateTemp(weatherCode),
           pressure: this.estimatePressure(weatherCode),
@@ -252,11 +272,12 @@ export default {
           humidity: this.estimateHumidity(weatherCode, mapping.rainIntensity)
         },
         lastRecord: this.formatRecordTime(mapping.updateTime || mapping.createTime),
-        aiSuggest: this.getEmotionSuggest('default'),
+        aiSuggest: this.getEmotionSuggest(mapping.primaryEmotion),
         trendIcon: '📍',
         trendTxt: '今日最新一条',
         isToday: true,
-        recordId: mapping.recordId
+        recordId: mapping.recordId || mapping.id || null,
+        hasRecord: true
       }
     },
     getTodayString() {
@@ -283,6 +304,65 @@ export default {
     },
     getEmotionSuggest(emotion) {
       return EMOTION_SUGGESTS[emotion] || EMOTION_SUGGESTS.default
+    },
+    getUserFacingSummary(rawSummary, weatherCode, primaryEmotion) {
+      if (rawSummary && !this.isReportLikeSummary(rawSummary)) {
+        return rawSummary
+      }
+      return this.buildWeatherSummary(weatherCode, primaryEmotion)
+    },
+    isReportLikeSummary(summary) {
+      const text = String(summary || '')
+      const reportWords = ['用户表达', '心理风险', '强度', '/10', '健康状态', '自然状态', '诊断', '属于', '无风险', '低风险']
+      return reportWords.some(word => text.includes(word))
+    },
+    buildWeatherSummary(weatherCode, primaryEmotion) {
+      const emotionText = this.getEmotionLabel(primaryEmotion)
+      const summaries = {
+        sunny: `今天的你像一段明亮的晴天，${emotionText}来得很自然。可以把这份轻盈记下来，留给之后的自己回看。`,
+        breeze: `今天的你像被微风轻轻托住，${emotionText}里有一点稳定感。慢一点整理节奏，也是一种照顾。`,
+        cloudy: `今天的你心里有些云层，${emotionText}不一定很尖锐，却值得被看见。先不用急着把答案想清楚。`,
+        rain: `今天的你像走在一场细雨里，${emotionText}需要被温柔接住。允许自己慢一点，也是一种照顾。`,
+        storm: `今天的你心里风声有些重，${emotionText}让注意力变得紧绷。先给自己一个缓冲，再处理具体问题。`,
+        mist: `今天的你像站在薄雾里，${emotionText}让方向感变慢。别急着下结论，先陪自己待一会儿。`
+      }
+      return summaries[weatherCode] || '今天的你已经留下了一份心境天气。它不需要被立刻解释，只需要被温柔地看见。'
+    },
+    getEmotionLabel(emotion) {
+      const labels = {
+        happy: '愉悦',
+        anxious: '焦虑',
+        tired: '疲惫',
+        calm: '平静',
+        wronged: '委屈',
+        expect: '期待',
+        lonely: '孤独',
+        irritable: '烦躁',
+        sad: '低落',
+        warm: '温暖',
+        confused: '困惑',
+        hopeful: '希望感'
+      }
+      return labels[emotion] || '当前情绪'
+    },
+    shouldUseDarkText(item) {
+      const code = item?.weatherCode || 'cloudy'
+      const theme = WEATHER_THEMES[code] || WEATHER_THEMES.cloudy
+      const luminance = this.getAverageLuminance([theme.bg1, theme.bg2, theme.bg3])
+      return luminance > 0.42
+    },
+    getAverageLuminance(colors) {
+      const validColors = colors.filter(Boolean)
+      if (!validColors.length) return 0
+      const total = validColors.reduce((sum, color) => sum + this.getHexLuminance(color), 0)
+      return total / validColors.length
+    },
+    getHexLuminance(hex) {
+      const normalized = hex.replace('#', '')
+      if (normalized.length !== 6) return 0
+      const rgb = [0, 2, 4].map(start => parseInt(normalized.slice(start, start + 2), 16) / 255)
+      const linear = rgb.map(value => value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4))
+      return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
     },
     goTodaySnapshot() {
       this.$tab.navigateTo('/pages/weather/snapshot')
@@ -363,27 +443,11 @@ export default {
         this.animFrameId = null
       }
     },
-    goRecord() {
-      this.$tab.switchTab('/pages/record/index')
-    },
     goDetail(item) {
       if (item.recordId) {
         this.$tab.navigateTo(`/pages/record/result?recordId=${item.recordId}`)
       } else {
-        this.fetchLatestRecordAndNavigate()
-      }
-    },
-    async fetchLatestRecordAndNavigate() {
-      try {
-        const res = await getLatestMoodRecord()
-        const latestRecord = res.data
-        if (latestRecord && latestRecord.id) {
-          this.$tab.navigateTo(`/pages/record/result?recordId=${latestRecord.id}`)
-        } else {
-          uni.showToast({ title: '暂无详细记录，请先记录心情', icon: 'none' })
-        }
-      } catch (e) {
-        uni.showToast({ title: '获取记录失败', icon: 'none' })
+        uni.showToast({ title: '暂无分析数据', icon: 'none' })
       }
     }
   }
@@ -407,7 +471,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(145deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(145deg, #5C9CE6 0%, #2563EB 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -508,8 +572,16 @@ export default {
   flex-direction: column;
 }
 
+.content-wrapper--empty {
+  color: #273a63;
+}
+
+.content-wrapper--dark-text {
+  color: #273a63;
+}
+
 .top-spacer { height: 12vh; }
-.bottom-spacer { height: 16vh; }
+.bottom-spacer { height: 300rpx; }
 
 /* typography */
 .date-header { text-align: center; margin-bottom: 24rpx; opacity: 0.7; border-radius: 20rpx; }
@@ -525,6 +597,57 @@ export default {
   font-weight: 300;
   letter-spacing: 8rpx;
   text-shadow: 0 6rpx 20rpx rgba(0,0,0,0.15);
+}
+
+.content-wrapper--empty .date-text {
+  color: #5f6f93;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.content-wrapper--empty .weather-title {
+  color: #2563eb;
+  text-shadow: 0 8rpx 22rpx rgba(37, 99, 235, 0.16);
+}
+
+.content-wrapper--dark-text .date-header {
+  opacity: 1;
+}
+
+.content-wrapper--dark-text .date-text {
+  color: #5d6680;
+  background: rgba(255, 255, 255, 0.5);
+  text-shadow: none;
+}
+
+.content-wrapper--dark-text .weather-title {
+  color: #fff;
+  text-shadow: 0 8rpx 24rpx rgba(95, 75, 40, 0.2);
+}
+
+.content-wrapper--empty.content-wrapper--dark-text .weather-title {
+  color: #2563eb;
+  text-shadow: 0 8rpx 22rpx rgba(37, 99, 235, 0.16);
+}
+
+.content-wrapper--dark-text .glass-card,
+.content-wrapper--dark-text .param-box {
+  background: rgba(255, 255, 255, 0.36);
+  border-color: rgba(255, 255, 255, 0.56);
+  box-shadow: 0 18rpx 38rpx rgba(116, 91, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.36);
+}
+
+.content-wrapper--dark-text .card-title,
+.content-wrapper--dark-text .card-icon,
+.content-wrapper--dark-text .ai-text,
+.content-wrapper--dark-text .suggest-text,
+.content-wrapper--dark-text .p-val,
+.content-wrapper--dark-text .p-unit,
+.content-wrapper--dark-text .p-lbl,
+.content-wrapper--dark-text .trend-label,
+.content-wrapper--dark-text .last-record-text {
+  color: #273a63;
+  opacity: 1;
+  text-shadow: 0 1rpx 0 rgba(255, 255, 255, 0.36);
 }
 
 /* Glass Card Global */
@@ -556,6 +679,43 @@ export default {
   color: #fff;
   opacity: 0.95;
   letter-spacing: 1rpx;
+}
+
+.empty-state-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 52rpx 44rpx;
+  background: rgba(255, 255, 255, 0.58);
+  border-color: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 18rpx 44rpx rgba(45, 92, 201, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.empty-mark {
+  width: 76rpx;
+  height: 76rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 22rpx;
+  color: #ff69b4;
+  font-size: 46rpx;
+  background: rgba(255, 105, 180, 0.14);
+}
+
+.empty-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #2563eb;
+  margin-bottom: 18rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  line-height: 1.65;
+  color: #60708e;
+  text-align: center;
 }
 
 /* Grid */
@@ -612,52 +772,58 @@ export default {
 
 /* Action Area */
 .actions-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.record-btn-core {
-  width: 220rpx;
-  height: 220rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  position: fixed;
+  left: 36rpx;
+  right: 36rpx;
+  bottom: calc(env(safe-area-inset-bottom) + 146rpx);
+  z-index: 80;
   display: flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 12rpx 40rpx rgba(255, 255, 255, 0.4), inset 0 0 30rpx #fff;
-  border: 4rpx solid #fff;
-  animation: pulse-glow 3s infinite ease-in-out;
-  transition: transform 0.2s;
-  margin-bottom: 50rpx;
-}
-.record-btn-core:active { transform: scale(0.92); }
-.record-text {
-  font-size: 32rpx; color: #DB7093; font-weight: 600; letter-spacing: 4rpx;
 }
 
-@keyframes pulse-glow {
-  0% { box-shadow: 0 0 0 0 rgba(255,255,255,0.6); }
-  70% { box-shadow: 0 0 0 40rpx rgba(255,255,255,0); }
-  100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
-}
-
-.detail-btn {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  color: #fff;
-  border-radius: 50rpx;
-  padding: 0 60rpx;
+.action-btn {
+  flex: 1;
+  margin: 0;
   height: 88rpx;
   line-height: 88rpx;
-  font-size: 30rpx;
-  letter-spacing: 4rpx;
-  font-weight: 300;
+  border-radius: 48rpx;
+  padding: 0;
+  box-sizing: border-box;
+  font-size: 28rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+  white-space: nowrap;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 12rpx 28rpx rgba(45, 92, 201, 0.13);
 }
-.detail-btn:after { display: none; }
-.detail-btn:active { background: rgba(255, 255, 255, 0.3); }
+
+.action-btn + .action-btn {
+  margin-left: 18rpx;
+}
+
+.action-btn:after {
+  display: none;
+}
+
+.action-btn--ghost {
+  color: #2563eb;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(37, 99, 235, 0.16);
+}
+
+.action-btn--primary {
+  color: #fff;
+  background: #2563eb;
+  border: 1px solid rgba(255, 255, 255, 0.46);
+  box-shadow: 0 14rpx 32rpx rgba(37, 99, 235, 0.2);
+}
+
+.action-btn--disabled {
+  opacity: 0.62;
+}
+
+.action-btn:active {
+  transform: scale(0.98);
+}
 </style>

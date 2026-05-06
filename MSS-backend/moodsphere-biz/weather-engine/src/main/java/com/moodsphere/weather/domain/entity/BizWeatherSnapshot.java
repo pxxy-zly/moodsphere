@@ -44,6 +44,16 @@ public class BizWeatherSnapshot extends BaseEntity
 
     private Integer recordCount;
 
+    private String aiSummary;
+
+    private String primaryEmotion;
+
+    private String secondaryEmotion;
+
+    private String sceneRecognition;
+
+    private Integer riskLevel;
+
     private Integer delFlag;
 
     public Long getId()
@@ -214,6 +224,56 @@ public class BizWeatherSnapshot extends BaseEntity
     public void setRecordCount(Integer recordCount)
     {
         this.recordCount = recordCount;
+    }
+
+    public String getAiSummary()
+    {
+        return aiSummary;
+    }
+
+    public void setAiSummary(String aiSummary)
+    {
+        this.aiSummary = aiSummary;
+    }
+
+    public String getPrimaryEmotion()
+    {
+        return primaryEmotion;
+    }
+
+    public void setPrimaryEmotion(String primaryEmotion)
+    {
+        this.primaryEmotion = primaryEmotion;
+    }
+
+    public String getSecondaryEmotion()
+    {
+        return secondaryEmotion;
+    }
+
+    public void setSecondaryEmotion(String secondaryEmotion)
+    {
+        this.secondaryEmotion = secondaryEmotion;
+    }
+
+    public String getSceneRecognition()
+    {
+        return sceneRecognition;
+    }
+
+    public void setSceneRecognition(String sceneRecognition)
+    {
+        this.sceneRecognition = sceneRecognition;
+    }
+
+    public Integer getRiskLevel()
+    {
+        return riskLevel;
+    }
+
+    public void setRiskLevel(Integer riskLevel)
+    {
+        this.riskLevel = riskLevel;
     }
 
     public Integer getDelFlag()

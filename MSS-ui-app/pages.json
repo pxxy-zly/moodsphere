@@ -22,7 +22,8 @@
     {
       "path": "pages/record/index",
       "style": {
-        "navigationBarTitleText": "心情不打烊，记录不重样"
+        "navigationBarTitleText": "心情不打烊，记录不重样",
+		"navigationStyle": "custom"
       }
     },
     {

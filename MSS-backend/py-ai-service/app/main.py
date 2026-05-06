@@ -23,7 +23,7 @@ AI_USE_BAILIAN = os.getenv("AI_USE_BAILIAN", "true").strip().lower() == "true"
 AI_FALLBACK_TO_RULE = os.getenv("AI_FALLBACK_TO_RULE", "true").strip().lower() == "true"
 AI_MODEL_NAME = os.getenv("AI_MODEL_NAME", "qwen-plus")
 AI_MODEL_VERSION = os.getenv("AI_MODEL_VERSION", "latest")
-AI_PROMPT_VERSION = os.getenv("AI_PROMPT_VERSION", "p1-bailian-json")
+AI_PROMPT_VERSION = os.getenv("AI_PROMPT_VERSION", "p2-bailian-json-weather-summary")
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "").strip()
 DASHSCOPE_BASE_URL = os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1").strip()
 
@@ -202,7 +202,8 @@ def call_bailian_llm(payload: AnalyzeRequest) -> dict:
         "sceneRecognition: string (work/study/family/social/love/sleep/health/entertainment/sport/alone/general)\n"
         "riskLevel: integer (0-3)\n"
         "riskReason: string\n"
-        "aiSummary: string\n"
+        "aiSummary: string，使用中文，40到70字，写给用户自己看的心境天气反馈；使用第二人称“你”，可轻微使用天气隐喻，温柔具体。\n"
+        "aiSummary 禁止出现：用户表达、心理风险、强度、x/10、健康状态、自然状态、诊断、属于、无风险、低风险。\n"
         f"输入文本：{payload.contentText}\n"
         f"情绪强度(1-10)：{payload.emotionIntensity or 5}\n"
     )
@@ -229,11 +230,29 @@ def build_rule_result(payload: AnalyzeRequest) -> tuple[str, str, str, int, str,
     scene = detect_scene(normalized)
     keywords = extract_keywords(text)
     scores = build_scores(primary, secondary, payload.emotionIntensity)
-    summary = f"主情绪为{primary}，次情绪为{secondary}。关键词：{'、'.join(keywords)}。"
-    if risk_level > 0:
-        summary += " 检测到潜在风险信号，建议及时关注自身状态并寻求帮助。"
+    emotion_labels = {
+        "happy": "愉悦",
+        "anxious": "焦虑",
+        "tired": "疲惫",
+        "calm": "平静",
+        "wronged": "委屈",
+        "expect": "期待",
+        "lonely": "孤独",
+        "irritable": "烦躁",
+        "sad": "低落",
+        "warm": "温暖",
+        "confused": "困惑",
+        "hopeful": "希望感",
+    }
+    primary_label = emotion_labels.get(primary, primary)
+    secondary_label = emotion_labels.get(secondary, secondary)
+    summary = f"今天的你带着明显的{primary_label}，旁边也有一点{secondary_label}在陪伴。"
+    if risk_level >= 2:
+        summary += " 如果这片天气持续压得很低，请先把安全感放在第一位，也可以联系可信任的人。"
+    elif risk_level == 1:
+        summary += " 情绪的风有些紧，可以先放慢节奏，给自己一个可执行的小缓冲。"
     else:
-        summary += " 整体情绪风险较低。"
+        summary += " 可以把这份状态轻轻记下来，留给之后的自己回看。"
     return (text, primary, secondary, risk_level, risk_reason, scene, keywords, scores, summary)
 
 

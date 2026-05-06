@@ -1,59 +1,62 @@
-﻿<template>
+<template>
   <view class="result-page">
+    <!-- 加载状态 -->
     <view v-if="loading" class="state-card">
       <view class="loading-icon">🔮</view>
-      <view class="state-title">正在解析你的心情</view>
-      <view class="state-text">AI 正在分析你的情绪，请稍候...</view>
+      <view class="state-title gradient-text">正在解析你的心情</view>
+      <view class="state-text">AI 正在感受你的情绪波动，请稍候...</view>
     </view>
 
+    <!-- 错误状态 -->
     <view v-else-if="errorMsg" class="state-card error">
-      <view class="state-icon">⚠️</view>
-      <view class="state-title">加载失败</view>
+      <view class="state-icon">☁️</view>
+      <view class="state-title error-text">解析遇到小乱流</view>
       <view class="state-text">{{ errorMsg }}</view>
-      <button class="ghost-btn" @click="loadData">重新加载</button>
+      <button class="ghost-btn" @click="loadData">重新感受</button>
     </view>
 
-    <view v-else>
+    <!-- 结果展示 -->
+    <view v-else class="content-fade-in">
       <!-- AI分析卡片 -->
       <view class="card ai-card">
         <view class="card-header">
-          <view class="card-title">🤖 AI 情绪分析</view>
+          <view class="card-title">🤖 情绪解码</view>
           <view class="emotion-badge" :class="analysis ? getRiskClass(analysis.riskLevel) : 'risk-none'">
-            {{ analysis ? getRiskText(analysis.riskLevel) : '安全' }}
+            {{ analysis ? getRiskText(analysis.riskLevel) : '心境平和' }}
           </view>
         </view>
         
         <view class="emotion-display">
           <view class="emotion-main">
-            <text class="emotion-icon">{{ analysis ? getEmotionEmoji(analysis.primaryEmotion) : '😐' }}</text>
+            <text class="emotion-icon">{{ analysis ? getEmotionEmoji(analysis.primaryEmotion) : '🫧' }}</text>
             <text class="emotion-name">{{ analysis ? analysis.primaryEmotion : '--' }}</text>
-            <text class="emotion-label">主情绪</text>
+            <text class="emotion-label">主导情绪</text>
           </view>
-          <view class="emotion-arrow">→</view>
+          <view class="emotion-arrow">〰️</view>
           <view class="emotion-sub">
-            <text class="emotion-icon">{{ analysis ? getEmotionEmoji(analysis.secondaryEmotion) : '😐' }}</text>
+            <text class="emotion-icon">{{ analysis ? getEmotionEmoji(analysis.secondaryEmotion) : '🫧' }}</text>
             <text class="emotion-name">{{ analysis ? analysis.secondaryEmotion : '--' }}</text>
-            <text class="emotion-label">次情绪</text>
+            <text class="emotion-label">潜藏情绪</text>
           </view>
         </view>
 
         <view class="item-block">
-          <view class="item-label">📌 关键词</view>
+          <view class="item-label">✨ 心境碎片 (关键词)</view>
           <view class="tag-wrap">
             <text v-for="(item, idx) in keywordList" :key="idx" class="tag">{{ item }}</text>
-            <text v-if="keywordList.length === 0" class="empty-text">暂无关键词</text>
+            <text v-if="keywordList.length === 0" class="empty-text">暂无碎片</text>
           </view>
         </view>
 
         <view class="summary-box">
-          <view class="summary-header">💭 AI 摘要</view>
-          <view class="summary">{{ analysis ? analysis.aiSummary : '--' }}</view>
+          <view class="summary-header">💌 AI 寄语</view>
+          <view class="summary">{{ analysis ? analysis.aiSummary : '生活明朗，万物可爱。' }}</view>
         </view>
       </view>
 
       <!-- 情绪向量卡片 -->
       <view class="card vector-card">
-        <view class="card-title">📊 情绪向量</view>
+        <view class="card-title">📊 情绪雷达</view>
         <view class="grid">
           <view v-for="item in vectorItems" :key="item.key" class="grid-item">
             <view class="grid-label">{{ item.label }}</view>
@@ -67,7 +70,7 @@
 
       <!-- 天气映射卡片 -->
       <view class="card weather-card">
-        <view class="card-title">🌤️ 天气映射</view>
+        <view class="card-title">🌤️ 你的心境天气</view>
         <view class="weather-display" v-if="weather">
           <view class="weather-main">
             <text class="weather-icon">{{ getWeatherEmoji(weather.weatherCode) }}</text>
@@ -87,7 +90,7 @@
           <view class="param-item">
             <text class="param-icon">💧</text>
             <text class="param-val">{{ weather.rainIntensity || 0 }}</text>
-            <text class="param-label">雨量</text>
+            <text class="param-label">降水</text>
           </view>
           <view class="param-item">
             <text class="param-icon">🌬️</text>
@@ -102,21 +105,22 @@
         </view>
 
         <view class="item-row" v-if="weather">
-          <text class="item-label">色温</text>
-          <text class="item-value gradient-text">{{ weather.colorTemperature || '--' }} K</text>
+          <text class="item-label">天光色温</text>
+          <text class="item-value highlight-pink">{{ weather.colorTemperature || '--' }} K</text>
         </view>
         <view class="item-row" v-if="weather">
-          <text class="item-label">饱和度</text>
-          <text class="item-value">{{ weather.saturation || '--' }}%</text>
+          <text class="item-label">色彩饱和度</text>
+          <text class="item-value highlight-blue">{{ weather.saturation || '--' }}%</text>
         </view>
       </view>
 
-      <button class="primary-btn" @click="goWeather">🌈 去看我的天气</button>
+      <button class="primary-btn" @click="goWeather">进入我的气象站 🌈</button>
     </view>
   </view>
 </template>
 
 <script>
+// 这里保持你的原生 API 引用不变
 import { getMoodAnalyzeResult, getMoodVector, getMoodWeatherMapping } from '@/api/mood'
 
 export default {
@@ -146,20 +150,16 @@ export default {
   },
   computed: {
     keywordList() {
-      if (!this.analysis || !this.analysis.emotionKeywords) {
-        return []
-      }
+      if (!this.analysis || !this.analysis.emotionKeywords) return []
       const keywords = this.analysis.emotionKeywords
-      if (keywords.includes('、')) {
-        return keywords.split('、').filter(item => item.trim())
-      }
+      if (keywords.includes('、')) return keywords.split('、').filter(item => item.trim())
       return keywords.split(',').filter(item => item.trim())
     }
   },
   onLoad(options) {
     this.recordId = Number(options.recordId || 0)
     if (!this.recordId) {
-      this.errorMsg = '缺少recordId参数'
+      this.errorMsg = '心境信号丢失了 (缺少recordId)'
       return
     }
     this.loadData()
@@ -177,7 +177,7 @@ export default {
         if (this.analyzeStatus === 0) {
           this.startPolling()
         } else if (this.analyzeStatus === 2) {
-          this.errorMsg = 'AI分析失败，请返回记录页重试'
+          this.errorMsg = 'AI分析小憩中了，请返回重试'
         }
       } catch (error) {
         this.errorMsg = this.parseError(error)
@@ -200,9 +200,7 @@ export default {
         this.vector = vectorRes.data || null
         this.weather = weatherRes.data || null
       } catch (error) {
-        if (this.analyzeStatus !== 0) {
-          throw error
-        }
+        if (this.analyzeStatus !== 0) throw error
       }
     },
     startPolling() {
@@ -231,24 +229,14 @@ export default {
       }
     },
     formatVectorValue(value) {
-      if (value === null || value === undefined || value === '') {
-        return '--'
-      }
+      if (value === null || value === undefined || value === '') return '--'
       const numberValue = Number(value)
-      if (Number.isNaN(numberValue)) {
-        return value
-      }
-      return numberValue.toFixed(2)
+      return Number.isNaN(numberValue) ? value : numberValue.toFixed(2)
     },
     formatVectorPercent(value) {
-      if (value === null || value === undefined || value === '') {
-        return '0%'
-      }
+      if (value === null || value === undefined || value === '') return '0%'
       const numberValue = Number(value)
-      if (Number.isNaN(numberValue)) {
-        return '0%'
-      }
-      return (numberValue * 100).toFixed(0) + '%'
+      return Number.isNaN(numberValue) ? '0%' : (numberValue * 100).toFixed(0) + '%'
     },
     getRiskClass(riskLevel) {
       if (riskLevel === null || riskLevel === undefined) return 'risk-none'
@@ -258,45 +246,37 @@ export default {
     },
     getRiskText(riskLevel) {
       if (riskLevel === null || riskLevel === undefined) return '安全'
-      if (riskLevel >= 3) return '⚠️ 高风险'
-      if (riskLevel >= 1) return '⚡ 中风险'
-      return '✅ 低风险'
+      if (riskLevel >= 3) return '雨暴风狂'
+      if (riskLevel >= 1) return '泛起涟漪'
+      return '微风拂面'
     },
     getEmotionEmoji(emotion) {
       const emojiMap = {
-        happy: '😊', calm: '😌', sad: '😢', anxious: '😰',
-        irritable: '😠', lonely: '🥺', tired: '😩', confused: '😕',
-        hopeful: '🌟', warm: '🥰', wronged: '😤', expect: '🤔'
+        happy: '🥰', calm: '🍃', sad: '🌧️', anxious: '🍂',
+        irritable: '🌩️', lonely: '🌌', tired: '🥀', confused: '🌫️',
+        hopeful: '✨', warm: '☀️', wronged: '💧', expect: '🌱'
       }
-      return emojiMap[emotion] || '😐'
+      return emojiMap[emotion] || '🫧'
     },
     getWeatherEmoji(code) {
       const emojiMap = {
-        sunny: '☀️', breeze: '🌤️', cloudy: '☁️',
-        rain: '🌧️', storm: '⛈️', mist: '🌫️'
+        sunny: '☀️', breeze: '🍃', cloudy: '⛅',
+        rain: '🌧️', storm: '🌩️', mist: '🌫️'
       }
       return emojiMap[code] || '🌈'
     },
     getWeatherDesc(code) {
       const descMap = {
-        sunny: '阳光明媚', breeze: '微风轻拂', cloudy: '多云转阴',
-        rain: '绵绵细雨', storm: '骤雨风暴', mist: '薄雾朦胧'
+        sunny: '阳光洒满心房', breeze: '轻风拂过原野', cloudy: '云朵遮住心事',
+        rain: '淅沥小雨润物', storm: '情绪风暴过境', mist: '思绪漫入晨雾'
       }
-      return descMap[code] || '未知天气'
+      return descMap[code] || '未知的神秘气象'
     },
     parseError(error) {
-      if (!error) {
-        return '请求失败，请稍后重试'
-      }
-      if (typeof error === 'string') {
-        return error
-      }
-      if (error.msg) {
-        return error.msg
-      }
-      if (error.message) {
-        return error.message
-      }
+      if (!error) return '请求失败，请稍后重试'
+      if (typeof error === 'string') return error
+      if (error.msg) return error.msg
+      if (error.message) return error.message
       return '请求失败，请稍后重试'
     },
     goWeather() {
@@ -307,71 +287,34 @@ export default {
 </script>
 
 <style scoped>
+/* 核心色彩变量：蓝粉交织 */
 .result-page {
   min-height: 100vh;
-  padding: 28rpx;
-  background: linear-gradient(180deg, #F8FAFC 0%, #EEF2FF 50%, #F0F4FF 100%);
+  padding: 30rpx;
+  /* 柔和的蓝粉天空渐变背景 */
+  background: linear-gradient(160deg, #F0F7FF 0%, #F8F4FF 50%, #FFF0F5 100%);
+  padding-bottom: 80rpx;
 }
 
-.state-card {
-  background: #ffffff;
-  border-radius: 32rpx;
-  padding: 48rpx 36rpx;
-  color: #334155;
-  box-shadow: 0 8rpx 32rpx rgba(79, 70, 229, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.08);
-  text-align: center;
-}
-
-.state-card.error {
-  color: #DC2626;
-  border-color: rgba(220, 38, 38, 0.1);
-  background: linear-gradient(135deg, #FEF2F2 0%, #FFFFFF 100%);
-}
-
-.state-title {
-  font-size: 36rpx;
-  font-weight: 600;
-  margin-bottom: 16rpx;
-  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.state-card.error .state-title {
-  background: linear-gradient(135deg, #DC2626 0%, #EF4444 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.state-text {
-  margin-top: 16rpx;
-  font-size: 28rpx;
-  color: #64748B;
-  line-height: 1.6;
-}
-
-.card {
-  margin-bottom: 24rpx;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-radius: 32rpx;
-  padding: 32rpx;
-  box-shadow: 0 8rpx 32rpx rgba(79, 70, 229, 0.06);
-  border: 1px solid rgba(99, 102, 241, 0.06);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+/* --- 卡片通用样式 (毛玻璃质感) --- */
+.card, .state-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 36rpx;
+  padding: 36rpx;
+  box-shadow: 0 12rpx 40rpx rgba(92, 156, 230, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  margin-bottom: 28rpx;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card:active {
   transform: scale(0.98);
-  box-shadow: 0 4rpx 16rpx rgba(79, 70, 229, 0.04);
 }
 
 .card-title {
-  color: #1E1B4B;
+  color: #2C3E50;
   font-size: 34rpx;
   font-weight: 600;
   margin-bottom: 24rpx;
@@ -384,227 +327,57 @@ export default {
   content: '';
   width: 8rpx;
   height: 32rpx;
-  background: linear-gradient(180deg, #4F46E5 0%, #7C3AED 100%);
-  border-radius: 4rpx;
+  /* 标题左侧装饰线：蓝粉渐变 */
+  background: linear-gradient(180deg, #5C9CE6 0%, #FF8DA1 100%);
+  border-radius: 6rpx;
   margin-right: 16rpx;
 }
 
-.item-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 16rpx;
-  padding: 16rpx 0;
-  border-bottom: 1px solid #F1F5F9;
-}
-
-.item-row:last-child {
-  border-bottom: none;
-}
-
-.item-block {
-  margin-top: 20rpx;
-}
-
-.item-label {
-  color: #64748B;
-  font-size: 26rpx;
-  font-weight: 500;
-  margin-bottom: 8rpx;
-}
-
-.item-value {
-  color: #1E1B4B;
-  font-size: 30rpx;
-  font-weight: 600;
-  letter-spacing: 1rpx;
-}
-
-.item-value.small {
-  font-size: 24rpx;
-  color: #7C3AED;
-  font-weight: 500;
-}
-
-.tag-wrap {
-  margin-top: 12rpx;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12rpx;
-}
-
-.tag {
-  padding: 10rpx 20rpx;
-  border-radius: 24rpx;
-  background: linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%);
-  color: #4F46E5;
-  font-size: 24rpx;
-  font-weight: 500;
-  border: 1px solid rgba(79, 46, 229, 0.1);
-  transition: transform 0.2s ease;
-}
-
-.tag:active {
-  transform: scale(0.95);
-}
-
-.empty-text {
-  color: #94A3B8;
-  font-size: 24rpx;
-  font-style: italic;
-}
-
-.summary {
-  margin-top: 12rpx;
-  color: #475569;
-  font-size: 28rpx;
-  line-height: 1.8;
-  padding: 20rpx;
-  background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
-  border-radius: 20rpx;
-  border-left: 4rpx solid #7C3AED;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16rpx;
-  margin-top: 8rpx;
-}
-
-.grid-item {
-  border-radius: 20rpx;
-  background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
-  padding: 20rpx 16rpx;
+/* --- 状态视图 (加载/错误) --- */
+.state-card {
   text-align: center;
-  border: 1px solid #E2E8F0;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: 80rpx 40rpx;
+  margin-top: 100rpx;
 }
 
-.grid-item:active {
-  transform: scale(0.95);
-  box-shadow: 0 4rpx 12rpx rgba(79, 70, 229, 0.1);
+.state-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  margin-bottom: 16rpx;
 }
 
-.grid-label {
-  font-size: 22rpx;
-  color: #64748B;
-  margin-bottom: 8rpx;
-  font-weight: 500;
+.gradient-text {
+  background: linear-gradient(135deg, #5C9CE6 0%, #FF8DA1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-.grid-value {
-  font-size: 26rpx;
-  font-weight: 700;
-  color: #4F46E5;
-  font-family: "DIN Condensed", -apple-system, sans-serif;
+.error-text {
+  color: #FF8DA1;
 }
 
-.primary-btn,
-.ghost-btn {
-  border-radius: 50rpx;
-  font-size: 32rpx;
-  font-weight: 500;
-  letter-spacing: 2rpx;
-  height: 96rpx;
-  line-height: 96rpx;
-  margin-top: 24rpx;
-  transition: all 0.3s ease;
-  box-shadow: 0 8rpx 24rpx rgba(79, 70, 229, 0.2);
+.state-text {
+  font-size: 28rpx;
+  color: #8A98A8;
+  line-height: 1.6;
 }
 
-.primary-btn {
-  background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-  color: #ffffff;
-  border: none;
-}
-
-.primary-btn:active {
-  transform: translateY(4rpx);
-  box-shadow: 0 4rpx 12rpx rgba(79, 70, 229, 0.3);
-}
-
-.primary-btn::after {
-  display: none;
-}
-
-.ghost-btn {
-  margin-top: 16rpx;
-  background: rgba(255, 255, 259, 0.9);
-  color: #4F46E5;
-  border: 2rpx solid #4F46E5;
-  box-shadow: none;
-}
-
-.ghost-btn:active {
-  background: #EEF2FF;
-}
-
-/* 动画效果 */
-.card {
-  animation: fadeInUp 0.5s ease-out;
-}
-
-.card:nth-child(2) {
-  animation-delay: 0.1s;
-}
-
-.card:nth-child(3) {
-  animation-delay: 0.2s;
-}
-
-.card:nth-child(4) {
-  animation-delay: 0.3s;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20rpx);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 风险等级高亮 */
-.risk-high {
-  color: #DC2626;
-  font-weight: 700;
-}
-
-.risk-medium {
-  color: #F59E0B;
-  font-weight: 700;
-}
-
-.risk-low {
-  color: #10B981;
-  font-weight: 700;
-}
-
-/* Loading 状态 */
-.loading-icon {
-  font-size: 80rpx;
-  margin-bottom: 24rpx;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.1); opacity: 1; }
-}
-
-.state-icon {
-  font-size: 80rpx;
-  margin-bottom: 24rpx;
-}
-
-/* AI 分析卡片增强 */
+/* --- AI 解析卡片 --- */
 .ai-card {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.03) 0%, rgba(124, 58, 237, 0.05) 100%);
-  border-color: rgba(79, 70, 229, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-card::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 300rpx;
+  height: 300rpx;
+  background: radial-gradient(circle, rgba(92, 156, 230, 0.1) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
 .card-header {
@@ -612,204 +385,233 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24rpx;
+  position: relative;
+  z-index: 1;
 }
 
 .emotion-badge {
-  padding: 8rpx 20rpx;
-  border-radius: 20rpx;
+  padding: 8rpx 24rpx;
+  border-radius: 30rpx;
   font-size: 22rpx;
   font-weight: 600;
+  letter-spacing: 1rpx;
 }
 
-.emotion-badge.risk-high {
-  background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
-  color: #DC2626;
-}
-
-.emotion-badge.risk-medium {
-  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
-  color: #D97706;
-}
-
-.emotion-badge.risk-low {
-  background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
-  color: #059669;
-}
-
-.emotion-badge.risk-none {
-  background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%);
-  color: #4F46E5;
-}
+/* 风险等级契合自然意象 */
+.emotion-badge.risk-none { background: rgba(92, 156, 230, 0.1); color: #5C9CE6; }
+.emotion-badge.risk-low { background: rgba(16, 185, 129, 0.1); color: #10B981; }
+.emotion-badge.risk-medium { background: rgba(245, 166, 35, 0.1); color: #F5A623; }
+.emotion-badge.risk-high { background: rgba(255, 141, 161, 0.15); color: #FF6B81; }
 
 .emotion-display {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 32rpx 0;
-  gap: 32rpx;
+  gap: 20rpx;
+  padding: 20rpx 0;
+  position: relative;
+  z-index: 1;
 }
 
 .emotion-main, .emotion-sub {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24rpx 40rpx;
-  background: rgba(79, 70, 229, 0.05);
-  border-radius: 24rpx;
-  border: 1px solid rgba(79, 70, 229, 0.1);
-  min-width: 160rpx;
+  padding: 28rpx 40rpx;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 32rpx;
+  box-shadow: 0 4rpx 20rpx rgba(92, 156, 230, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  flex: 1;
 }
 
-.emotion-icon {
-  font-size: 64rpx;
-  margin-bottom: 12rpx;
-}
-
-.emotion-name {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #1E1B4B;
-  margin-bottom: 4rpx;
-  text-transform: capitalize;
-}
-
-.emotion-label {
-  font-size: 22rpx;
-  color: #64748B;
-}
+.emotion-icon { font-size: 72rpx; margin-bottom: 12rpx; }
+.emotion-name { font-size: 32rpx; font-weight: 600; color: #2C3E50; margin-bottom: 6rpx; }
+.emotion-label { font-size: 22rpx; color: #8A98A8; }
 
 .emotion-arrow {
-  font-size: 48rpx;
-  color: #A5B4FC;
-  font-weight: 300;
+  font-size: 36rpx;
+  color: #B4C6D8;
+  opacity: 0.6;
+}
+
+.item-block {
+  margin-top: 32rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.item-label {
+  color: #8A98A8;
+  font-size: 26rpx;
+  font-weight: 500;
+  margin-bottom: 16rpx;
+}
+
+.tag-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.tag {
+  padding: 12rpx 28rpx;
+  border-radius: 30rpx;
+  /* 标签蓝粉渐变背景 */
+  background: linear-gradient(135deg, rgba(92, 156, 230, 0.08) 0%, rgba(255, 141, 161, 0.08) 100%);
+  color: #5C9CE6;
+  font-size: 24rpx;
+  font-weight: 500;
 }
 
 .summary-box {
-  background: rgba(124, 58, 237, 0.05);
-  border-radius: 20rpx;
-  padding: 20rpx;
-  margin-top: 16rpx;
+  margin-top: 32rpx;
+  padding: 28rpx;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.4) 100%);
+  border-radius: 28rpx;
+  border-left: 6rpx solid #FF8DA1;
+  position: relative;
+  z-index: 1;
 }
 
-.summary-header {
-  font-size: 24rpx;
-  color: #7C3AED;
-  font-weight: 600;
-  margin-bottom: 12rpx;
+.summary-header { font-size: 24rpx; color: #FF8DA1; font-weight: 600; margin-bottom: 12rpx; }
+.summary { font-size: 28rpx; color: #4A5568; line-height: 1.7; }
+
+/* --- 情绪雷达 (向量卡片) --- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20rpx;
+  margin-top: 20rpx;
 }
 
-/* 向量卡片增强 */
-.vector-card {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.03) 0%, rgba(6, 182, 212, 0.05) 100%);
-  border-color: rgba(16, 185, 129, 0.1);
+.grid-item {
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 24rpx;
+  padding: 24rpx 16rpx;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
-.vector-card .card-title::before {
-  background: linear-gradient(180deg, #10B981 0%, #06B6D4 100%);
-}
+.grid-label { font-size: 22rpx; color: #8A98A8; margin-bottom: 10rpx; }
+.grid-value { font-size: 30rpx; font-weight: 700; color: #2C3E50; font-family: "DIN Condensed", sans-serif; }
 
 .grid-bar {
-  height: 6rpx;
-  background: #E2E8F0;
-  border-radius: 3rpx;
-  margin-top: 8rpx;
+  height: 8rpx;
+  background: rgba(92, 156, 230, 0.1);
+  border-radius: 4rpx;
+  margin-top: 12rpx;
   overflow: hidden;
 }
 
 .grid-bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, #10B981 0%, #06B6D4 100%);
-  border-radius: 3rpx;
-  transition: width 0.5s ease-out;
+  /* 进度条：从蓝到粉 */
+  background: linear-gradient(90deg, #5C9CE6 0%, #FF8DA1 100%);
+  border-radius: 4rpx;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 天气卡片增强 */
-.weather-card {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.03) 0%, rgba(251, 146, 60, 0.05) 100%);
-  border-color: rgba(245, 158, 11, 0.1);
-}
-
-.weather-card .card-title::before {
-  background: linear-gradient(180deg, #F59E0B 0%, #FB923C 100%);
-}
-
+/* --- 天气映射卡片 --- */
 .weather-display {
   display: flex;
   justify-content: center;
-  padding: 24rpx 0;
+  margin-bottom: 30rpx;
 }
 
 .weather-main {
   display: flex;
   align-items: center;
-  gap: 24rpx;
-  padding: 24rpx 40rpx;
-  background: rgba(245, 158, 11, 0.08);
-  border-radius: 24rpx;
-  border: 1px solid rgba(245, 158, 11, 0.15);
+  gap: 30rpx;
+  padding: 30rpx 50rpx;
+  background: linear-gradient(135deg, rgba(92, 156, 230, 0.05) 0%, rgba(255, 141, 161, 0.05) 100%);
+  border-radius: 36rpx;
+  border: 1px solid rgba(255, 255, 255, 0.8);
 }
 
-.weather-icon {
-  font-size: 80rpx;
-}
-
-.weather-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.weather-name {
-  font-size: 40rpx;
-  font-weight: 700;
-  color: #1E1B4B;
-}
-
-.weather-desc {
-  font-size: 24rpx;
-  color: #64748B;
-  margin-top: 4rpx;
-}
+.weather-icon { font-size: 88rpx; }
+.weather-name { font-size: 40rpx; font-weight: 700; color: #2C3E50; }
+.weather-desc { font-size: 24rpx; color: #8A98A8; margin-top: 6rpx; }
 
 .params-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16rpx;
-  margin: 24rpx 0;
+  margin-bottom: 30rpx;
 }
 
 .param-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16rpx 8rpx;
-  background: #F8FAFC;
-  border-radius: 16rpx;
-  border: 1px solid #E2E8F0;
+  padding: 20rpx 0;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 20rpx;
 }
 
-.param-icon {
+.param-icon { font-size: 36rpx; margin-bottom: 10rpx; }
+.param-val { font-size: 32rpx; font-weight: 700; color: #2C3E50; }
+.param-label { font-size: 20rpx; color: #8A98A8; margin-top: 6rpx; }
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1px dashed rgba(92, 156, 230, 0.15);
+}
+.item-row:last-child { border-bottom: none; }
+
+.highlight-pink { color: #FF8DA1; font-weight: 600; font-size: 30rpx; }
+.highlight-blue { color: #5C9CE6; font-weight: 600; font-size: 30rpx; }
+
+/* --- 按钮样式 --- */
+.primary-btn {
+  width: 100%;
+  border-radius: 50rpx;
   font-size: 32rpx;
-  margin-bottom: 8rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+  height: 96rpx;
+  line-height: 96rpx;
+  margin-top: 40rpx;
+  /* 按钮渐变：蓝粉交织 */
+  background: linear-gradient(135deg, #5C9CE6 0%, #FF8DA1 100%);
+  color: #ffffff;
+  border: none;
+  box-shadow: 0 12rpx 30rpx rgba(255, 141, 161, 0.25);
+  transition: all 0.3s ease;
 }
 
-.param-val {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #1E1B4B;
-  font-family: "DIN Condensed", -apple-system, sans-serif;
+.primary-btn:active {
+  transform: translateY(4rpx);
+  box-shadow: 0 6rpx 16rpx rgba(255, 141, 161, 0.2);
 }
 
-.param-label {
-  font-size: 20rpx;
-  color: #64748B;
-  margin-top: 4rpx;
+.primary-btn::after { display: none; }
+
+.ghost-btn {
+  margin-top: 24rpx;
+  background: transparent;
+  color: #5C9CE6;
+  border: 2rpx solid #5C9CE6;
+  border-radius: 50rpx;
+  height: 88rpx;
+  line-height: 84rpx;
 }
 
-.gradient-text {
-  background: linear-gradient(135deg, #F59E0B 0%, #EF4444 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  font-weight: 700;
+/* --- 动画 --- */
+.content-fade-in { animation: fadeIn 0.6s ease-out forwards; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(20rpx); } to { opacity: 1; transform: translateY(0); } }
+
+.loading-icon {
+  font-size: 88rpx;
+  margin-bottom: 30rpx;
+  animation: float 2.5s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-16rpx) scale(1.05); }
 }
 </style>

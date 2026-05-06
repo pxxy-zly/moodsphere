@@ -18,7 +18,10 @@
       <swiper-item v-for="(item, index) in snapshotList" :key="index">
         <scroll-view scroll-y class="scroll-container">
           <view class="top-spacer"></view>
-          <view class="content-wrapper">
+          <view
+            class="content-wrapper"
+            :class="{ 'content-wrapper--dark-text': shouldUseDarkText(item) }"
+          >
             <view class="date-header">
               <text class="date-text">{{ item.date }} {{ item.isToday ? ' (今日)' : '' }} · 天气快照</text>
             </view>
@@ -202,7 +205,7 @@ export default {
         weatherCode: weatherCode,
         type: WEATHER_TYPES[weatherCode] || 'fog',
         title: snapshot.weatherName || WEATHER_TITLES[weatherCode] || '多云',
-        aiSummary: isToday ? '这是今日聚合后的天气快照，左滑可查看以往天气快照。' : '这是历史日期聚合后的天气快照。',
+        aiSummary: this.getUserFacingSummary(snapshot.aiSummary, weatherCode, snapshot.primaryEmotion, isToday),
         params: {
           temp: this.estimateTemp(weatherCode),
           pressure: this.estimatePressure(weatherCode),
@@ -251,6 +254,66 @@ export default {
       if (rainIntensity) return Math.min(95, 50 + rainIntensity * 8)
       const humidities = { sunny: 40, breeze: 55, cloudy: 65, rain: 85, storm: 95, mist: 80 }
       return humidities[code] || 60
+    },
+    getUserFacingSummary(rawSummary, weatherCode, primaryEmotion, isToday) {
+      if (rawSummary && !this.isReportLikeSummary(rawSummary)) {
+        return rawSummary
+      }
+      return this.buildSnapshotSummary(weatherCode, primaryEmotion, isToday)
+    },
+    isReportLikeSummary(summary) {
+      const text = String(summary || '')
+      const reportWords = ['用户表达', '心理风险', '强度', '/10', '健康状态', '自然状态', '诊断', '属于', '无风险', '低风险']
+      return reportWords.some(word => text.includes(word))
+    },
+    buildSnapshotSummary(weatherCode, primaryEmotion, isToday) {
+      const prefix = isToday ? '今日聚合后的心境快照' : '这一天的心境快照'
+      const emotionText = this.getEmotionLabel(primaryEmotion)
+      const summaries = {
+        sunny: `${prefix}像一段明亮晴天，${emotionText}留下了比较舒展的痕迹。回看时，可以记住当时让你变轻的东西。`,
+        breeze: `${prefix}像微风经过，${emotionText}让节奏保持柔和。适合回看那些曾经让你安定的小细节。`,
+        cloudy: `${prefix}带着一点云层，${emotionText}并不完全清晰。它已经留下线索，等你慢慢回看。`,
+        rain: `${prefix}像一场慢雨，${emotionText}需要被温柔接住。回看时，可以关注当时最需要被照顾的部分。`,
+        storm: `${prefix}风声比较重，${emotionText}曾集中出现。可以结合详细分析慢慢拆开，不必一次想完。`,
+        mist: `${prefix}像薄雾停留，${emotionText}让判断变慢。适合温和复盘，而不是急着给自己下结论。`
+      }
+      return summaries[weatherCode] || `${prefix}已经留下。你可以慢慢回看它，不急着立刻解释所有感受。`
+    },
+    getEmotionLabel(emotion) {
+      const labels = {
+        happy: '愉悦',
+        anxious: '焦虑',
+        tired: '疲惫',
+        calm: '平静',
+        wronged: '委屈',
+        expect: '期待',
+        lonely: '孤独',
+        irritable: '烦躁',
+        sad: '低落',
+        warm: '温暖',
+        confused: '困惑',
+        hopeful: '希望感'
+      }
+      return labels[emotion] || '当前情绪'
+    },
+    shouldUseDarkText(item) {
+      const code = item?.weatherCode || 'cloudy'
+      const theme = WEATHER_THEMES[code] || WEATHER_THEMES.cloudy
+      const luminance = this.getAverageLuminance([theme.bg1, theme.bg2, theme.bg3])
+      return luminance > 0.42
+    },
+    getAverageLuminance(colors) {
+      const validColors = colors.filter(Boolean)
+      if (!validColors.length) return 0
+      const total = validColors.reduce((sum, color) => sum + this.getHexLuminance(color), 0)
+      return total / validColors.length
+    },
+    getHexLuminance(hex) {
+      const normalized = hex.replace('#', '')
+      if (normalized.length !== 6) return 0
+      const rgb = [0, 2, 4].map(start => parseInt(normalized.slice(start, start + 2), 16) / 255)
+      const linear = rgb.map(value => value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4))
+      return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
     },
     onSwiperChange(e) {
       this.currentIndex = e.detail.current
@@ -450,6 +513,10 @@ export default {
   flex-direction: column;
 }
 
+.content-wrapper--dark-text {
+  color: #273a63;
+}
+
 .top-spacer { height: 8vh; }
 .bottom-spacer { height: 8vh; }
 
@@ -466,6 +533,48 @@ export default {
   font-weight: 300;
   letter-spacing: 6rpx;
   text-shadow: 0 6rpx 20rpx rgba(0,0,0,0.15);
+}
+
+.content-wrapper--dark-text .date-header {
+  opacity: 1;
+}
+
+.content-wrapper--dark-text .date-text {
+  color: #5d6680;
+  background: rgba(255, 255, 255, 0.5);
+  text-shadow: none;
+}
+
+.content-wrapper--dark-text .weather-title {
+  color: #fff;
+  text-shadow: 0 8rpx 24rpx rgba(95, 75, 40, 0.2);
+}
+
+.content-wrapper--dark-text .glass-card,
+.content-wrapper--dark-text .param-box {
+  background: rgba(255, 255, 255, 0.36);
+  border-color: rgba(255, 255, 255, 0.56);
+  box-shadow: 0 18rpx 38rpx rgba(116, 91, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.36);
+}
+
+.content-wrapper--dark-text .card-title,
+.content-wrapper--dark-text .card-icon,
+.content-wrapper--dark-text .ai-text,
+.content-wrapper--dark-text .suggest-text,
+.content-wrapper--dark-text .p-val,
+.content-wrapper--dark-text .p-unit,
+.content-wrapper--dark-text .p-lbl,
+.content-wrapper--dark-text .trend-label {
+  color: #273a63;
+  opacity: 1;
+  text-shadow: 0 1rpx 0 rgba(255, 255, 255, 0.36);
+}
+
+.content-wrapper--dark-text .detail-btn {
+  color: #2563eb;
+  background: rgba(255, 255, 255, 0.82);
+  border-color: rgba(37, 99, 235, 0.16);
+  box-shadow: 0 12rpx 28rpx rgba(45, 92, 201, 0.13);
 }
 
 .glass-card {
