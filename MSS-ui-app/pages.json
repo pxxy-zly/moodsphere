@@ -121,7 +121,7 @@
         "pagePath": "pages/weather/index",
         "iconPath": "static/images/tabbar/home.png",
         "selectedIconPath": "static/images/tabbar/home_.png",
-        "text": "天气"
+        "text": "心境"
       },
       {
         "pagePath": "pages/globe/index",
@@ -139,7 +139,7 @@
         "pagePath": "pages/report/index",
         "iconPath": "static/images/tabbar/work.png",
         "selectedIconPath": "static/images/tabbar/work_.png",
-        "text": "报告"
+        "text": "洞察"
       },
       {
         "pagePath": "pages/mine/index",

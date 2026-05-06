@@ -1,35 +1,23 @@
 <template>
-  <view class="mss-tabbar-container">
-    <view class="mss-tabbar-shell">
-      <view class="mss-weather-blur"></view>
-      <view class="mss-weather-blur blur-two"></view>
+  <view class="custom-tabbar-wrapper">
+    <view class="tab-pill">
+      <view
+        v-for="(item, index) in tabs"
+        :key="item.pagePath"
+        class="tab-item"
+        :class="{ 'tab-item--active': activeIndex === index }"
+        @tap="handleSwitchTab(item, index)"
+      >
+        <view class="icon-box">
+          <image
+            class="tab-icon"
+            :src="item.iconPath"
+            mode="aspectFit"
+          ></image>
+        </view>
 
-      <view class="mss-tabbar-row">
-        <view
-          v-for="(item, index) in tabs"
-          :key="item.pagePath"
-          class="mss-tab-item"
-          :class="{ 'is-center': item.center }"
-          @tap="switchTab(item, index)"
-        >
-          <view v-if="item.center" class="mss-center-wrapper">
-            <view class="mss-center-glow" :class="{ active: selected === index }"></view>
-            <view class="mss-center-btn" :class="{ active: selected === index }">
-              <image class="mss-center-icon" :src="selected === index ? item.selectedIconPath : item.iconPath" mode="aspectFit"></image>
-            </view>
-            <text class="mss-tab-label center" :class="{ active: selected === index }">{{ item.text }}</text>
-          </view>
-
-          <view v-else class="mss-normal-wrapper">
-            <view class="mss-icon-bubble" :class="{ active: selected === index }">
-              <image
-                class="mss-icon-image"
-                :src="selected === index ? item.selectedIconPath : item.iconPath"
-                mode="aspectFit"
-              ></image>
-            </view>
-            <text class="mss-tab-label" :class="{ active: selected === index }">{{ item.text }}</text>
-          </view>
+        <view class="text-box" :class="{ 'text-box--active': activeIndex === index }">
+          <text class="tab-text">{{ item.text }}</text>
         </view>
       </view>
     </view>
@@ -38,39 +26,39 @@
 
 <script>
 export default {
+  props: {
+    currentPath: {
+      type: String,
+      default: ''
+    }
+  },
   data() {
     return {
       tabs: [
         {
           pagePath: '/pages/weather/index',
-          text: '天气',
-          iconPath: '/static/images/tabbar/weather.svg',
-          selectedIconPath: '/static/images/tabbar/weather.svg'
+          text: '心境',
+          iconPath: '/static/images/tabbar/weather.svg'
         },
         {
           pagePath: '/pages/globe/index',
           text: '星球',
-          iconPath: '/static/images/tabbar/globe.svg',
-          selectedIconPath: '/static/images/tabbar/globe.svg'
+          iconPath: '/static/images/tabbar/globe.svg'
         },
         {
           pagePath: '/pages/record/index',
           text: '记录',
-          center: true,
-          iconPath: '/static/images/tabbar/record.svg',
-          selectedIconPath: '/static/images/tabbar/record.svg'
+          iconPath: '/static/images/tabbar/record.svg'
         },
         {
           pagePath: '/pages/report/index',
-          text: '报告',
-          iconPath: '/static/images/tabbar/report.svg',
-          selectedIconPath: '/static/images/tabbar/report.svg'
+          text: '洞察',
+          iconPath: '/static/images/tabbar/report.svg'
         },
         {
           pagePath: '/pages/mine/index',
           text: '我的',
-          iconPath: '/static/images/tabbar/mine.svg',
-          selectedIconPath: '/static/images/tabbar/mine.svg'
+          iconPath: '/static/images/tabbar/mine.svg'
         }
       ]
     }
@@ -78,12 +66,20 @@ export default {
   computed: {
     selected() {
       return this.$store.state.app.tabBarSelected
+    },
+    activeIndex() {
+      if (this.currentPath) {
+        const normalizedPath = this.currentPath.startsWith('/') ? this.currentPath : `/${this.currentPath}`
+        const index = this.tabs.findIndex(item => item.pagePath === normalizedPath)
+        if (index > -1) return index
+      }
+      return this.selected
     }
   },
   methods: {
-    switchTab(item, index) {
+    handleSwitchTab(item, index) {
       if (!item || !item.pagePath) return
-      if (this.selected === index) return
+      if (this.activeIndex === index) return
 
       this.$store.dispatch('setTabBarSelected', index)
       uni.switchTab({
@@ -95,191 +91,115 @@ export default {
 </script>
 
 <style scoped>
-.mss-tabbar-container {
+.custom-tabbar-wrapper {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 999;
-  padding: 0 22rpx 12rpx;
-  padding: 0 22rpx calc(env(safe-area-inset-bottom) + 12rpx);
+  padding: 0 36rpx calc(env(safe-area-inset-bottom) + 20rpx);
   pointer-events: none;
 }
 
-.mss-tabbar-shell {
-  position: relative;
-  height: 148rpx;
-  border-radius: 46rpx;
-  background: rgba(241, 249, 255, 0.56);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(26px) saturate(130%);
-  -webkit-backdrop-filter: blur(26px) saturate(130%);
-  box-shadow: 0 16rpx 44rpx rgba(108, 151, 181, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  overflow: visible;
+.tab-pill {
+  height: 104rpx;
+  padding: 14rpx 18rpx;
+  border-radius: 60rpx;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  box-shadow: 0 16rpx 42rpx rgba(45, 92, 201, 0.14), 0 8rpx 24rpx rgba(255, 101, 171, 0.1);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   pointer-events: auto;
 }
 
-.mss-weather-blur {
-  position: absolute;
-  width: 300rpx;
-  height: 140rpx;
-  left: -40rpx;
-  top: -40rpx;
-  border-radius: 200rpx;
-  background: linear-gradient(135deg, rgba(180, 243, 255, 0.5), rgba(218, 239, 255, 0.12));
-  filter: blur(30rpx);
-  pointer-events: none;
+.tab-item {
+  min-width: 74rpx;
+  height: 76rpx;
+  padding: 0 18rpx;
+  border-radius: 42rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.28s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.mss-weather-blur.blur-two {
-  left: auto;
-  right: -30rpx;
-  top: -34rpx;
-  width: 260rpx;
-  background: linear-gradient(145deg, rgba(170, 230, 255, 0.35), rgba(255, 255, 255, 0.16));
+.tab-item--active {
+  min-width: 150rpx;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(255, 105, 180, 0.16));
 }
 
-.mss-tabbar-row {
+.icon-box {
   position: relative;
-  z-index: 2;
-  height: 100%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: 0 8rpx 12rpx;
-}
-
-.mss-tab-item {
-  flex: 1;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-}
-
-.mss-tab-item.is-center {
-  transform: translateY(-30rpx);
-}
-
-.mss-normal-wrapper,
-.mss-center-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.mss-icon-bubble {
-  width: 62rpx;
-  height: 62rpx;
-  border-radius: 31rpx;
+  z-index: 1;
+  width: 48rpx;
+  height: 48rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  flex: 0 0 48rpx;
+}
+
+.tab-icon {
+  width: 40rpx;
+  height: 40rpx;
+  opacity: 0.58;
+  filter: grayscale(1);
   transition: all 0.25s ease;
 }
 
-.mss-icon-bubble.active {
-  background: linear-gradient(135deg, rgba(120, 222, 232, 0.34), rgba(149, 219, 255, 0.35));
-  border-color: rgba(118, 210, 233, 0.45);
-  box-shadow: 0 8rpx 20rpx rgba(108, 193, 221, 0.22);
+.tab-item--active .tab-icon {
+  opacity: 1;
+  filter: grayscale(0);
+  transform: translateY(-1rpx) scale(1.06);
 }
 
-.mss-center-wrapper {
-  position: relative;
-}
-
-.mss-center-glow {
+.tab-item--active .icon-box::after {
+  content: '';
   position: absolute;
-  width: 128rpx;
-  height: 128rpx;
-  top: -18rpx;
-  border-radius: 64rpx;
-  background: radial-gradient(circle, rgba(71, 222, 220, 0.42), rgba(71, 222, 220, 0));
-  filter: blur(18rpx);
-  opacity: 0.7;
+  top: -2rpx;
+  right: -6rpx;
+  z-index: -1;
+  width: 22rpx;
+  height: 22rpx;
+  border-radius: 50%;
+  background: #ff69b4;
+  box-shadow: 0 4rpx 12rpx rgba(255, 105, 180, 0.32);
+  animation: dot-pop 0.28s cubic-bezier(0.18, 0.89, 0.32, 1.24) both;
 }
 
-.mss-center-glow.active {
-  animation: center-breathe 2.7s ease-in-out infinite;
+.text-box {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: all 0.28s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
-.mss-center-btn {
-  position: relative;
-  z-index: 2;
-  width: 108rpx;
-  height: 108rpx;
-  border-radius: 54rpx;
-  background: linear-gradient(145deg, #29d7c7 0%, #57c8ff 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid rgba(255, 255, 255, 0.86);
-  box-shadow: 0 12rpx 30rpx rgba(55, 191, 220, 0.35), inset 0 -8rpx 18rpx rgba(31, 127, 181, 0.22);
+.text-box--active {
+  max-width: 96rpx;
+  opacity: 1;
+  margin-left: 10rpx;
 }
 
-.mss-center-btn.active {
-  animation: center-pulse 2.7s ease-in-out infinite;
-}
-
-.mss-icon-image {
-  width: 40rpx;
-  height: 40rpx;
-}
-
-.mss-center-icon {
-  width: 48rpx;
-  height: 48rpx;
-  opacity: 0.96;
-}
-
-.mss-tab-label {
-  margin-top: 8rpx;
-  font-size: 22rpx;
+.tab-text {
+  font-size: 27rpx;
   line-height: 1;
-  color: #8c99ad;
-  letter-spacing: 1rpx;
+  font-weight: 700;
+  color: #2563eb;
 }
 
-.mss-tab-label.active {
-  color: #228fb4;
-}
-
-.mss-tab-label.center {
-  margin-top: 10rpx;
-  font-size: 23rpx;
-  color: #5a7388;
-}
-
-.mss-tab-label.center.active {
-  color: #1389b0;
-}
-
-@keyframes center-breathe {
+@keyframes dot-pop {
   0% {
-    opacity: 0.62;
-    transform: scale(0.94);
+    opacity: 0;
+    transform: scale(0);
   }
-  50% {
+  100% {
     opacity: 1;
-    transform: scale(1.08);
-  }
-  100% {
-    opacity: 0.62;
-    transform: scale(0.94);
-  }
-}
-
-@keyframes center-pulse {
-  0% {
-    box-shadow: 0 10rpx 28rpx rgba(55, 191, 220, 0.24), inset 0 -8rpx 18rpx rgba(31, 127, 181, 0.18);
-  }
-  50% {
-    box-shadow: 0 14rpx 36rpx rgba(55, 191, 220, 0.42), inset 0 -8rpx 18rpx rgba(31, 127, 181, 0.26);
-  }
-  100% {
-    box-shadow: 0 10rpx 28rpx rgba(55, 191, 220, 0.24), inset 0 -8rpx 18rpx rgba(31, 127, 181, 0.18);
+    transform: scale(1);
   }
 }
 </style>
