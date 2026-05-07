@@ -222,7 +222,7 @@ export default {
       }
       this.submitting = true
 
-      if (this.$modal && this.$modal.loading) this.$modal.loading('正在生成天气结果，请稍候...')
+      if (this.$modal && this.$modal.loading) this.$modal.loading('生成中...')
       else uni.showLoading({ title: '生成中...' })
 
       try {
