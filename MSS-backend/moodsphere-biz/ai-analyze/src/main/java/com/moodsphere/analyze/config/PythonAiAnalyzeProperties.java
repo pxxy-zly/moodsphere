@@ -28,7 +28,7 @@ public class PythonAiAnalyzeProperties
     /**
      * 调用超时时间（毫秒）
      */
-    private long timeoutMs = 8000L;
+    private long timeoutMs = 30000L;
 
     /**
      * 鉴权 token（可选）

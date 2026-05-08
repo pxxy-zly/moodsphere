@@ -13,9 +13,12 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import com.alibaba.fastjson2.JSON;
 import com.moodsphere.analyze.config.PythonAiAnalyzeProperties;
+import com.moodsphere.analyze.domain.dto.PythonAnalyzeMediaAsset;
 import com.moodsphere.analyze.domain.dto.PythonAnalyzeRequest;
 import com.moodsphere.analyze.domain.dto.PythonAnalyzeResponse;
 import com.moodsphere.analyze.domain.entity.BizAiAnalysisResult;
+import com.moodsphere.asset.domain.entity.BizMoodAsset;
+import com.moodsphere.asset.mapper.BizMoodAssetMapper;
 import com.moodsphere.common.exception.ServiceException;
 import com.moodsphere.common.utils.StringUtils;
 import com.moodsphere.record.domain.entity.BizMoodRecord;
@@ -32,10 +35,14 @@ public class PythonMoodAnalyzeClient
 
     private final PythonAiAnalyzeProperties properties;
 
-    public PythonMoodAnalyzeClient(WebClient.Builder webClientBuilder, PythonAiAnalyzeProperties properties)
+    private final BizMoodAssetMapper bizMoodAssetMapper;
+
+    public PythonMoodAnalyzeClient(WebClient.Builder webClientBuilder, PythonAiAnalyzeProperties properties,
+            BizMoodAssetMapper bizMoodAssetMapper)
     {
         this.webClientBuilder = webClientBuilder;
         this.properties = properties;
+        this.bizMoodAssetMapper = bizMoodAssetMapper;
     }
 
     /**
@@ -67,6 +74,7 @@ public class PythonMoodAnalyzeClient
         request.setSourceType(record.getSourceType());
         request.setRecordTime(record.getRecordTime());
         request.setTraceId(traceId);
+        request.setMediaAssets(buildMediaAssets(record.getId()));
 
         try
         {
@@ -140,5 +148,37 @@ public class PythonMoodAnalyzeClient
             return null;
         }
         return String.join("、", keywords);
+    }
+
+    private List<PythonAnalyzeMediaAsset> buildMediaAssets(Long recordId)
+    {
+        if (recordId == null)
+        {
+            return List.of();
+        }
+        List<BizMoodAsset> assets = bizMoodAssetMapper.selectByRecordId(recordId);
+        if (assets == null || assets.isEmpty())
+        {
+            return List.of();
+        }
+        return assets.stream()
+                .filter(asset -> StringUtils.isNotEmpty(asset.getFileUrl()))
+                .map(this::toMediaAsset)
+                .toList();
+    }
+
+    private PythonAnalyzeMediaAsset toMediaAsset(BizMoodAsset asset)
+    {
+        PythonAnalyzeMediaAsset mediaAsset = new PythonAnalyzeMediaAsset();
+        mediaAsset.setId(asset.getId());
+        mediaAsset.setAssetType(asset.getAssetType());
+        mediaAsset.setFileUrl(asset.getFileUrl());
+        mediaAsset.setFileSize(asset.getFileSize());
+        mediaAsset.setMimeType(asset.getMimeType());
+        mediaAsset.setDuration(asset.getDuration());
+        mediaAsset.setThumbnailUrl(asset.getThumbnailUrl());
+        mediaAsset.setWidth(asset.getWidth());
+        mediaAsset.setHeight(asset.getHeight());
+        return mediaAsset;
     }
 }

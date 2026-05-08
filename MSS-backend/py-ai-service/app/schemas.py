@@ -6,14 +6,29 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
+class MediaAsset(BaseModel):
+    id: int | None = None
+    assetType: int | None = None
+    fileUrl: str
+    mimeType: str | None = None
+    fileSize: int | None = None
+    duration: int | None = None
+    thumbnailUrl: str | None = None
+    width: int | None = None
+    height: int | None = None
+
+
 class AnalyzeRequest(BaseModel):
     recordId: int
     userId: int | None = None
-    contentText: str = Field(min_length=1)
+    contentText: str | None = ""
     emotionIntensity: int | None = Field(default=5, ge=1, le=10)
     sourceType: int | None = None
     recordTime: datetime | None = None
     traceId: str | None = None
+    mediaAssets: list[MediaAsset] = Field(default_factory=list)
+    imageUrls: list[str] = Field(default_factory=list)
+    audioUrls: list[str] = Field(default_factory=list)
 
 
 class AnalyzeResponse(BaseModel):

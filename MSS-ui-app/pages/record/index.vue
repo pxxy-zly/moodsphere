@@ -19,16 +19,33 @@
         />
         <view class="input-actions">
           <view class="action-icons">
-            <view class="icon-circle" @click="handleChooseVoice">
-              <text class="icon-text">🎤</text>
+            <view class="upload-action upload-action-voice" :class="{ 'upload-action-recording': recording }" @click="handleChooseVoice">
+              <view class="upload-action-icon">
+                <image v-if="!recording" class="upload-action-icon-image" src="/static/images/record/voice.svg" mode="aspectFit"></image>
+                <text v-else class="icon-text icon-text-stop">停</text>
+              </view>
+              <view class="upload-action-copy">
+                <text class="upload-action-title">{{ recording ? '停止录音' : '语音记录' }}</text>
+                <text class="upload-action-desc">{{ recording ? '再次点击结束上传' : '点击录音后上传' }}</text>
+              </view>
             </view>
-            <view class="icon-circle" @click="handleChooseImage">
-              <text class="icon-text">🖼️</text>
+            <view class="upload-action upload-action-image" @click="handleChooseImage">
+              <view class="upload-action-icon">
+                <image class="upload-action-icon-image" src="/static/images/record/image.svg" mode="aspectFit"></image>
+              </view>
+              <view class="upload-action-copy">
+                <text class="upload-action-title">图片上传</text>
+                <text class="upload-action-desc">相册或拍照上传</text>
+              </view>
             </view>
           </view>
           <view class="counter" :class="{ 'counter-warn': form.contentText.length > 430 }">
             {{ form.contentText.length }}/500
           </view>
+        </view>
+        <view v-if="recording || recordingHint" class="recording-status" :class="{ 'recording-active': recording }">
+          <text class="recording-dot" v-if="recording"></text>
+          <text>{{ recording ? `录音中 ${formatVoiceDuration(recordingSeconds)}` : recordingHint }}</text>
         </view>
       </view>
 
@@ -160,6 +177,9 @@ export default {
     return {
       submitting: false,
       uploading: false,
+      recording: false,
+      recordingSeconds: 0,
+      recordingHint: '',
       selectedTagMap: [],
       imageAssets: [],
       voiceAsset: null,
@@ -206,6 +226,15 @@ export default {
   onShow() {
     this.$store.dispatch('setTabBarSelected', 2)
   },
+  onLoad() {
+    this.initRecorderManager()
+  },
+  onHide() {
+    this.stopRecordingIfNeeded(true)
+  },
+  onUnload() {
+    this.stopRecordingIfNeeded(true)
+  },
   methods: {
     async handleChooseImage() {
       if (this.uploading) return
@@ -227,6 +256,85 @@ export default {
     },
     async handleChooseVoice() {
       if (this.uploading) return
+      if (this.recorderManager) {
+        if (this.recording) {
+          this.stopVoiceRecord()
+        } else {
+          await this.startVoiceRecord()
+        }
+        return
+      }
+      await this.chooseVoiceFileAndUpload()
+    },
+    initRecorderManager() {
+      if (typeof uni.getRecorderManager !== 'function') return
+      this.recorderManager = uni.getRecorderManager()
+      if (this._recorderBound) return
+      this._recorderBound = true
+      this.recorderManager.onStop(async (res) => {
+        const shouldDiscard = this._discardRecording === true
+        this._discardRecording = false
+        this.clearRecordTimer()
+        this.recording = false
+        if (shouldDiscard) {
+          this.recordingHint = ''
+          return
+        }
+        if (!res || !res.tempFilePath) {
+          this.recordingHint = '录音失败，请重试'
+          return
+        }
+        try {
+          this.uploading = true
+          this.recordingHint = '语音上传中...'
+          const duration = Math.max(1, Math.round((res.duration || this.recordingSeconds * 1000) / 1000))
+          this.voiceAsset = await uploadMoodVoice(res.tempFilePath, duration)
+          this.recordingHint = '语音已添加'
+        } catch (error) {
+          this.recordingHint = ''
+          uni.showToast({ title: this.parseError(error), icon: 'none' })
+        } finally {
+          this.uploading = false
+        }
+      })
+      this.recorderManager.onError(() => {
+        this.clearRecordTimer()
+        this.recording = false
+        this.recordingHint = '录音失败，请重试'
+      })
+    },
+    async startVoiceRecord() {
+      try {
+        await this.ensureRecordAuth()
+      } catch (error) {
+        if (error && error.errMsg && error.errMsg.includes('cancel')) return
+        uni.showToast({ title: '需要录音权限才能使用语音记录', icon: 'none' })
+        return
+      }
+      this.initRecorderManager()
+      if (!this.recorderManager) {
+        await this.chooseVoiceFileAndUpload()
+        return
+      }
+      this.removeVoiceAsset()
+      this.recordingHint = '再次点击麦克风可结束录音'
+      this.recordingSeconds = 0
+      this.recording = true
+      this.startRecordTimer()
+      this.recorderManager.start({
+        duration: 60000,
+        sampleRate: 16000,
+        numberOfChannels: 1,
+        encodeBitRate: 96000,
+        format: 'mp3'
+      })
+    },
+    stopVoiceRecord() {
+      if (!this.recorderManager || !this.recording) return
+      this.recorderManager.stop()
+    },
+    async chooseVoiceFileAndUpload() {
+      if (this.uploading) return
       try {
         const file = await this.chooseVoiceFile()
         if (!file || !file.path) return
@@ -238,6 +346,32 @@ export default {
       } finally {
         this.uploading = false
       }
+    },
+    ensureRecordAuth() {
+      return new Promise((resolve, reject) => {
+        uni.authorize({
+          scope: 'scope.record',
+          success: resolve,
+          fail: reject
+        })
+      })
+    },
+    startRecordTimer() {
+      this.clearRecordTimer()
+      this._recordTimer = setInterval(() => {
+        this.recordingSeconds += 1
+      }, 1000)
+    },
+    clearRecordTimer() {
+      if (this._recordTimer) {
+        clearInterval(this._recordTimer)
+        this._recordTimer = null
+      }
+    },
+    stopRecordingIfNeeded(discard = false) {
+      if (!this.recorderManager || !this.recording) return
+      this._discardRecording = discard
+      this.recorderManager.stop()
     },
     chooseImageFiles() {
       return new Promise((resolve, reject) => {
@@ -272,6 +406,9 @@ export default {
     },
     removeVoiceAsset() {
       this.voiceAsset = null
+      if (!this.recording) {
+        this.recordingHint = ''
+      }
     },
     formatVoiceDuration(duration) {
       const total = Number(duration || 0)
@@ -387,12 +524,17 @@ export default {
       return assetIds
     },
     resetForm() {
+      this.stopRecordingIfNeeded(true)
       this.form.contentText = ''
       this.form.emotionIntensity = 5
       this.form.isPublic = 0
       this.selectedTagMap = []
       this.imageAssets = []
       this.voiceAsset = null
+      this.recording = false
+      this.recordingSeconds = 0
+      this.recordingHint = ''
+      this.clearRecordTimer()
     }
   }
 }
@@ -478,7 +620,7 @@ export default {
 .input-actions {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-end;
   margin-top: 22rpx;
   padding-top: 22rpx;
   border-top: 1rpx solid rgba(151, 166, 190, 0.16);
@@ -486,29 +628,116 @@ export default {
 
 .action-icons {
   display: flex;
+  flex: 1;
+  gap: 16rpx;
 }
 
-.icon-circle {
-  width: 70rpx;
-  height: 70rpx;
-  margin-right: 18rpx;
-  border-radius: 50%;
+.upload-action {
+  min-width: 0;
+  flex: 1;
+  min-height: 92rpx;
+  padding: 14rpx 16rpx;
+  border-radius: 24rpx;
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: #f5f8fd;
-  border: 1rpx solid rgba(151, 166, 190, 0.12);
-  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.8);
+  background: rgba(248, 251, 255, 0.92);
+  border: 1rpx solid rgba(151, 166, 190, 0.14);
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.88), 0 6rpx 18rpx rgba(92, 156, 230, 0.06);
   transition: all 0.2s ease;
 }
 
-.icon-circle:active {
+.upload-action:active {
   transform: scale(0.95);
-  background: #eaf1fb;
+  box-shadow: 0 4rpx 12rpx rgba(92, 156, 230, 0.08);
+}
+
+.upload-action-voice {
+  background: linear-gradient(135deg, rgba(242, 248, 255, 0.98) 0%, rgba(236, 243, 255, 0.94) 100%);
+}
+
+.upload-action-image {
+  background: linear-gradient(135deg, rgba(255, 249, 244, 0.98) 0%, rgba(255, 244, 236, 0.94) 100%);
+}
+
+.upload-action-recording {
+  background: linear-gradient(135deg, rgba(255, 239, 243, 0.98) 0%, rgba(255, 231, 237, 0.96) 100%);
+  border-color: rgba(255, 109, 135, 0.22);
+  box-shadow: 0 8rpx 22rpx rgba(255, 109, 135, 0.14);
+}
+
+.upload-action-icon {
+  width: 56rpx;
+  height: 56rpx;
+  margin-right: 12rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.8);
+  flex-shrink: 0;
+}
+
+.upload-action-icon-image {
+  width: 30rpx;
+  height: 30rpx;
+}
+
+.upload-action-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.upload-action-title {
+  color: #233044;
+  font-size: 26rpx;
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.upload-action-desc {
+  margin-top: 2rpx;
+  color: #7d899b;
+  font-size: 20rpx;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .icon-text {
-  font-size: 31rpx;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: #ff6d87;
+}
+
+.icon-text-stop {
+  letter-spacing: 2rpx;
+}
+
+.recording-status {
+  margin-top: 16rpx;
+  display: flex;
+  align-items: center;
+  color: #7d899b;
+  font-size: 24rpx;
+}
+
+.recording-active {
+  color: #ff6d87;
+}
+
+.recording-dot {
+  width: 14rpx;
+  height: 14rpx;
+  margin-right: 10rpx;
+  border-radius: 50%;
+  background: #ff6d87;
+  box-shadow: 0 0 0 10rpx rgba(255, 109, 135, 0.12);
 }
 
 .counter {

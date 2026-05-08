@@ -5,13 +5,17 @@ import logging
 import os
 import time
 import uuid
+from pathlib import Path
 from typing import Iterable
+from urllib.parse import urlparse
+import base64
+import mimetypes
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException
 from openai import OpenAI
 
-from .schemas import AnalyzeRequest, AnalyzeResponse
+from .schemas import AnalyzeRequest, AnalyzeResponse, MediaAsset
 
 load_dotenv()
 
@@ -21,9 +25,11 @@ logger = logging.getLogger(__name__)
 AI_API_TOKEN = os.getenv("AI_API_TOKEN", "").strip()
 AI_USE_BAILIAN = os.getenv("AI_USE_BAILIAN", "true").strip().lower() == "true"
 AI_FALLBACK_TO_RULE = os.getenv("AI_FALLBACK_TO_RULE", "true").strip().lower() == "true"
-AI_MODEL_NAME = os.getenv("AI_MODEL_NAME", "qwen-plus")
-AI_MODEL_VERSION = os.getenv("AI_MODEL_VERSION", "latest")
-AI_PROMPT_VERSION = os.getenv("AI_PROMPT_VERSION", "p2-bailian-json-weather-summary")
+AI_MODEL_NAME = os.getenv("AI_MODEL_NAME", "qwen3.5-omni-plus-2026-03-15")
+AI_MODEL_VERSION = os.getenv("AI_MODEL_VERSION", "2026-03-15")
+AI_PROMPT_VERSION = os.getenv("AI_PROMPT_VERSION", "p3-qwen-omni-multimodal-json")
+AI_MAX_MEDIA_ASSETS = int(os.getenv("AI_MAX_MEDIA_ASSETS", "12"))
+AI_MAX_INLINE_FILE_BYTES = int(os.getenv("AI_MAX_INLINE_FILE_BYTES", str(9 * 1024 * 1024)))
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "").strip()
 DASHSCOPE_BASE_URL = os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1").strip()
 
@@ -190,41 +196,165 @@ def parse_json_text(content: str) -> dict:
     return json.loads(content)
 
 
-def call_bailian_llm(payload: AnalyzeRequest) -> dict:
-    client = get_client()
+def is_http_url(value: str) -> bool:
+    parsed = urlparse(value)
+    return parsed.scheme in ("http", "https")
+
+
+def is_data_url(value: str) -> bool:
+    return value.startswith("data:")
+
+
+def guess_mime_type(value: str, fallback: str = "application/octet-stream") -> str:
+    guessed, _ = mimetypes.guess_type(value)
+    return guessed or fallback
+
+
+def guess_audio_format(value: str, mime_type: str | None = None) -> str:
+    if mime_type and "/" in mime_type:
+        subtype = mime_type.split("/", 1)[1].lower()
+        if subtype in {"mpeg", "mpga"}:
+            return "mp3"
+        if subtype in {"x-m4a", "mp4"}:
+            return "m4a"
+        return subtype.split(";")[0]
+    suffix = Path(urlparse(value).path).suffix.lower().lstrip(".")
+    return suffix or "mp3"
+
+
+def file_to_data_url(path_text: str, mime_type: str | None = None) -> str:
+    path = Path(path_text)
+    if not path.is_file():
+        raise RuntimeError(f"Media file does not exist: {path_text}")
+    size = path.stat().st_size
+    if size > AI_MAX_INLINE_FILE_BYTES:
+        raise RuntimeError(f"Media file is too large to inline: {path_text}")
+    media_type = mime_type or guess_mime_type(path_text)
+    encoded = base64.b64encode(path.read_bytes()).decode("utf-8")
+    if media_type.startswith("image/"):
+        return f"data:{media_type};base64,{encoded}"
+    return f"data:;base64,{encoded}"
+
+
+def normalize_media_url(url: str, mime_type: str | None = None) -> str:
+    value = url.strip()
+    if is_http_url(value) or is_data_url(value):
+        return value
+    return file_to_data_url(value, mime_type)
+
+
+def is_image_asset(asset: MediaAsset) -> bool:
+    if asset.assetType == 1:
+        return True
+    mime_type = (asset.mimeType or "").lower()
+    return mime_type.startswith("image/") or guess_mime_type(asset.fileUrl).startswith("image/")
+
+
+def is_audio_asset(asset: MediaAsset) -> bool:
+    if asset.assetType == 2:
+        return True
+    mime_type = (asset.mimeType or "").lower()
+    return mime_type.startswith("audio/") or guess_mime_type(asset.fileUrl).startswith("audio/")
+
+
+def iter_media_assets(payload: AnalyzeRequest) -> list[MediaAsset]:
+    result = list(payload.mediaAssets or [])
+    result.extend(MediaAsset(fileUrl=url, assetType=1) for url in payload.imageUrls or [])
+    result.extend(MediaAsset(fileUrl=url, assetType=2) for url in payload.audioUrls or [])
+    return [asset for asset in result if asset.fileUrl and asset.fileUrl.strip()][:AI_MAX_MEDIA_ASSETS]
+
+
+def build_user_content_parts(payload: AnalyzeRequest) -> list[dict]:
+    parts: list[dict] = []
+    image_count = 0
+    audio_count = 0
+    for asset in iter_media_assets(payload):
+        if is_image_asset(asset):
+            parts.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": normalize_media_url(asset.fileUrl, asset.mimeType)},
+                }
+            )
+            image_count += 1
+        elif is_audio_asset(asset):
+            parts.append(
+                {
+                    "type": "input_audio",
+                    "input_audio": {
+                        "data": normalize_media_url(asset.fileUrl, asset.mimeType),
+                        "format": guess_audio_format(asset.fileUrl, asset.mimeType),
+                    },
+                }
+            )
+            audio_count += 1
+        else:
+            logger.info("Skip unsupported media asset, id=%s, url=%s", asset.id, asset.fileUrl)
+
+    text = (payload.contentText or "").strip()
+    media_hint = ""
+    if image_count or audio_count:
+        media_hint = f"\n输入还包含：{image_count}张图片、{audio_count}段语音。请结合文本、图片内容、语音转写和语气线索综合判断。"
+
     prompt = (
         "你是情绪分析引擎。请只输出JSON对象，不要输出任何额外文本。\n"
+        "请先理解输入中的文字、图片和语音：语音需要识别说话内容、语气、停顿与明显情绪；图片需要识别场景、人物状态、氛围和可见文字。\n"
         "字段要求：\n"
         "primaryEmotion: string (happy/anxious/tired/calm/wronged/expect/lonely/irritable/sad/warm/confused/hopeful)\n"
         "secondaryEmotion: string\n"
-        "emotionKeywords: string[]\n"
+        "emotionKeywords: string[]，优先提取文字、语音转写或图片中与情绪相关的关键词\n"
         "emotionScores: object<string, number[0,1]>\n"
         "sceneRecognition: string (work/study/family/social/love/sleep/health/entertainment/sport/alone/general)\n"
         "riskLevel: integer (0-3)\n"
-        "riskReason: string\n"
+        "riskReason: string，说明来自文字/语音/图片中的哪些信号；无明显风险时写简短原因\n"
         "aiSummary: string，使用中文，40到70字，写给用户自己看的心境天气反馈；使用第二人称“你”，可轻微使用天气隐喻，温柔具体。\n"
         "aiSummary 禁止出现：用户表达、心理风险、强度、x/10、健康状态、自然状态、诊断、属于、无风险、低风险。\n"
-        f"输入文本：{payload.contentText}\n"
-        f"情绪强度(1-10)：{payload.emotionIntensity or 5}\n"
+        f"输入文本：{text or '（无文字输入，请依据图片或语音分析）'}\n"
+        f"情绪强度(1-10)：{payload.emotionIntensity or 5}"
+        f"{media_hint}\n"
     )
+    parts.append({"type": "text", "text": prompt})
+    return parts
+
+
+def collect_stream_text(completion) -> str:
+    fragments: list[str] = []
+    for chunk in completion:
+        if not getattr(chunk, "choices", None):
+            continue
+        delta = chunk.choices[0].delta
+        content = getattr(delta, "content", None)
+        if isinstance(content, str):
+            fragments.append(content)
+        elif isinstance(content, list):
+            for item in content:
+                text = item.get("text") if isinstance(item, dict) else getattr(item, "text", None)
+                if text:
+                    fragments.append(str(text))
+    return "".join(fragments)
+
+
+def call_bailian_llm(payload: AnalyzeRequest) -> dict:
+    client = get_client()
     completion = client.chat.completions.create(
         model=AI_MODEL_NAME,
         temperature=0.2,
+        stream=True,
+        stream_options={"include_usage": True},
+        modalities=["text"],
         messages=[
             {"role": "system", "content": "你是专业的中文心理情绪分析助手，输出必须是合法JSON。"},
-            {"role": "user", "content": prompt},
+            {"role": "user", "content": build_user_content_parts(payload)},
         ],
     )
-    if not completion.choices:
-        raise RuntimeError("Empty choices from Bailian")
-    content = completion.choices[0].message.content or ""
+    content = collect_stream_text(completion)
     if not content.strip():
         raise RuntimeError("Empty content from Bailian")
     return parse_json_text(content)
 
 
 def build_rule_result(payload: AnalyzeRequest) -> tuple[str, str, str, int, str, str, list[str], dict[str, float], str]:
-    text = payload.contentText.strip()
+    text = (payload.contentText or "").strip() or "用户上传了多媒体记录"
     normalized = text.lower()
     primary, secondary, risk_level, risk_reason = detect_emotion(normalized)
     scene = detect_scene(normalized)
@@ -268,7 +398,9 @@ def analyze(
     x_request_id: str | None = Header(default=None),
 ) -> AnalyzeResponse:
     start = time.time()
-    text = payload.contentText.strip()
+    text = (payload.contentText or "").strip()
+    if not text and not iter_media_assets(payload):
+        raise HTTPException(status_code=400, detail="contentText or mediaAssets is required")
     provider = "python-rule"
     model_name = "rule-python-v1"
     model_version = AI_MODEL_VERSION
@@ -299,6 +431,7 @@ def analyze(
     cost_ms = max(1, int((time.time() - start) * 1000))
     raw = {
         "mode": "bailian" if llm_json else "python-rule",
+        "mediaAssetCount": len(iter_media_assets(payload)),
         "primaryEmotion": primary,
         "secondaryEmotion": secondary,
         "riskLevel": risk_level,

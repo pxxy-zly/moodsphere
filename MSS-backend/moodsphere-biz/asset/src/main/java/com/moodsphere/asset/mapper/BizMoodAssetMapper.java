@@ -11,6 +11,8 @@ public interface BizMoodAssetMapper
 {
     int insertBizMoodAsset(BizMoodAsset bizMoodAsset);
 
+    List<BizMoodAsset> selectByRecordId(@Param("recordId") Long recordId);
+
     List<BizMoodAsset> selectUnboundByIdsAndCreateBy(@Param("assetIds") List<Long> assetIds, @Param("createBy") String createBy);
 
     int bindAssetsToRecord(@Param("recordId") Long recordId, @Param("assetIds") List<Long> assetIds,

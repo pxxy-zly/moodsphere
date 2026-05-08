@@ -1,6 +1,7 @@
 package com.moodsphere.analyze.domain.dto;
 
 import java.util.Date;
+import java.util.List;
 
 /**
  * Java -> Python 分析请求
@@ -20,6 +21,8 @@ public class PythonAnalyzeRequest
     private Date recordTime;
 
     private String traceId;
+
+    private List<PythonAnalyzeMediaAsset> mediaAssets;
 
     public Long getRecordId()
     {
@@ -89,5 +92,15 @@ public class PythonAnalyzeRequest
     public void setTraceId(String traceId)
     {
         this.traceId = traceId;
+    }
+
+    public List<PythonAnalyzeMediaAsset> getMediaAssets()
+    {
+        return mediaAssets;
+    }
+
+    public void setMediaAssets(List<PythonAnalyzeMediaAsset> mediaAssets)
+    {
+        this.mediaAssets = mediaAssets;
     }
 }
