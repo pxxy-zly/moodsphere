@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import Iterable
 from urllib.parse import urlparse
 import base64
+import ipaddress
 import mimetypes
+from urllib.request import Request, urlopen
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -30,8 +32,23 @@ AI_MODEL_VERSION = os.getenv("AI_MODEL_VERSION", "2026-03-15")
 AI_PROMPT_VERSION = os.getenv("AI_PROMPT_VERSION", "p3-qwen-omni-multimodal-json")
 AI_MAX_MEDIA_ASSETS = int(os.getenv("AI_MAX_MEDIA_ASSETS", "12"))
 AI_MAX_INLINE_FILE_BYTES = int(os.getenv("AI_MAX_INLINE_FILE_BYTES", str(9 * 1024 * 1024)))
+AI_MEDIA_FETCH_TIMEOUT_SECONDS = float(os.getenv("AI_MEDIA_FETCH_TIMEOUT_SECONDS", "8"))
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "").strip()
 DASHSCOPE_BASE_URL = os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1").strip()
+EMOTION_KEYS = [
+    "happy",
+    "anxious",
+    "tired",
+    "calm",
+    "wronged",
+    "expect",
+    "lonely",
+    "irritable",
+    "sad",
+    "warm",
+    "confused",
+    "hopeful",
+]
 
 _client: OpenAI | None = None
 
@@ -129,20 +146,7 @@ def build_scores(primary: str, secondary: str, intensity: int | None) -> dict[st
     primary_score = round(0.58 + rate * 0.34, 4)
     secondary_score = round(0.36 + rate * 0.24, 4)
     baseline = round(0.08 + (1 - rate) * 0.10, 4)
-    scores = {
-        "happy": baseline,
-        "anxious": baseline,
-        "tired": baseline,
-        "calm": baseline,
-        "wronged": baseline,
-        "expect": baseline,
-        "lonely": baseline,
-        "irritable": baseline,
-        "sad": baseline,
-        "warm": baseline,
-        "confused": baseline,
-        "hopeful": baseline,
-    }
+    scores = {key: baseline for key in EMOTION_KEYS}
     scores[primary] = primary_score
     scores[secondary] = secondary_score
     return scores
@@ -151,14 +155,14 @@ def build_scores(primary: str, secondary: str, intensity: int | None) -> dict[st
 def normalize_scores(scores: dict[str, float] | None, primary: str, secondary: str, intensity: int | None) -> dict[str, float]:
     if not scores:
         return build_scores(primary, secondary, intensity)
-    normalized: dict[str, float] = {}
+    normalized: dict[str, float] = build_scores(primary, secondary, intensity)
     for key, value in scores.items():
         try:
-            normalized[str(key)] = round(float(value), 4)
+            score_key = str(key)
+            if score_key in EMOTION_KEYS:
+                normalized[score_key] = round(max(0.0, min(1.0, float(value))), 4)
         except Exception:
             continue
-    if not normalized:
-        return build_scores(primary, secondary, intensity)
     if primary not in normalized:
         normalized[primary] = 0.7
     if secondary not in normalized:
@@ -205,6 +209,18 @@ def is_data_url(value: str) -> bool:
     return value.startswith("data:")
 
 
+def is_private_or_local_url(value: str) -> bool:
+    parsed = urlparse(value)
+    host = (parsed.hostname or "").lower()
+    if host in {"localhost", "host.docker.internal"}:
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+        return ip.is_private or ip.is_loopback or ip.is_link_local
+    except ValueError:
+        return False
+
+
 def guess_mime_type(value: str, fallback: str = "application/octet-stream") -> str:
     guessed, _ = mimetypes.guess_type(value)
     return guessed or fallback
@@ -236,9 +252,34 @@ def file_to_data_url(path_text: str, mime_type: str | None = None) -> str:
     return f"data:;base64,{encoded}"
 
 
+def bytes_to_data_url(data: bytes, mime_type: str, is_image: bool) -> str:
+    encoded = base64.b64encode(data).decode("utf-8")
+    if is_image:
+        return f"data:{mime_type};base64,{encoded}"
+    return f"data:;base64,{encoded}"
+
+
+def fetch_url_to_data_url(url: str, mime_type: str | None = None) -> str:
+    request = Request(url, headers={"User-Agent": "MoodSphere-Python-AI/1.0"})
+    with urlopen(request, timeout=AI_MEDIA_FETCH_TIMEOUT_SECONDS) as response:
+        content_length = response.headers.get("Content-Length")
+        if content_length and int(content_length) > AI_MAX_INLINE_FILE_BYTES:
+            raise RuntimeError(f"Media URL is too large to inline: {url}")
+        data = response.read(AI_MAX_INLINE_FILE_BYTES + 1)
+        if len(data) > AI_MAX_INLINE_FILE_BYTES:
+            raise RuntimeError(f"Media URL is too large to inline: {url}")
+        response_mime = response.headers.get_content_type()
+    media_type = mime_type or response_mime or guess_mime_type(url)
+    return bytes_to_data_url(data, media_type, media_type.startswith("image/"))
+
+
 def normalize_media_url(url: str, mime_type: str | None = None) -> str:
     value = url.strip()
-    if is_http_url(value) or is_data_url(value):
+    if is_data_url(value):
+        return value
+    if is_http_url(value):
+        if is_private_or_local_url(value):
+            return fetch_url_to_data_url(value, mime_type)
         return value
     return file_to_data_url(value, mime_type)
 
@@ -336,6 +377,13 @@ def collect_stream_text(completion) -> str:
 
 def call_bailian_llm(payload: AnalyzeRequest) -> dict:
     client = get_client()
+    media_count = len(iter_media_assets(payload))
+    logger.info(
+        "Calling Bailian, model=%s, recordId=%s, mediaCount=%s",
+        AI_MODEL_NAME,
+        payload.recordId,
+        media_count,
+    )
     completion = client.chat.completions.create(
         model=AI_MODEL_NAME,
         temperature=0.2,
@@ -350,6 +398,7 @@ def call_bailian_llm(payload: AnalyzeRequest) -> dict:
     content = collect_stream_text(completion)
     if not content.strip():
         raise RuntimeError("Empty content from Bailian")
+    logger.info("Bailian returned content, recordId=%s, chars=%s", payload.recordId, len(content))
     return parse_json_text(content)
 
 
@@ -405,15 +454,19 @@ def analyze(
     model_name = "rule-python-v1"
     model_version = AI_MODEL_VERSION
     llm_json: dict | None = None
+    fallback_error: str | None = None
     if AI_USE_BAILIAN:
         try:
             llm_json = call_bailian_llm(payload)
             provider = "aliyun-bailian"
             model_name = AI_MODEL_NAME
         except Exception as ex:
+            fallback_error = str(ex)
             logger.warning("Bailian call failed, fallback=%s, err=%s", AI_FALLBACK_TO_RULE, ex)
             if not AI_FALLBACK_TO_RULE:
                 raise HTTPException(status_code=502, detail=f"Bailian call failed: {ex}") from ex
+    else:
+        fallback_error = "AI_USE_BAILIAN=false"
 
     if llm_json:
         primary = str(llm_json.get("primaryEmotion") or "calm")
@@ -431,6 +484,7 @@ def analyze(
     cost_ms = max(1, int((time.time() - start) * 1000))
     raw = {
         "mode": "bailian" if llm_json else "python-rule",
+        "fallbackReason": fallback_error,
         "mediaAssetCount": len(iter_media_assets(payload)),
         "primaryEmotion": primary,
         "secondaryEmotion": secondary,

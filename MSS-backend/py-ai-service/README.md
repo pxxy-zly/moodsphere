@@ -34,6 +34,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 9001 --reload
 - `AI_API_TOKEN` (optional, for Java -> Python service authentication)
 - `AI_MAX_MEDIA_ASSETS` (default: `12`)
 - `AI_MAX_INLINE_FILE_BYTES` (default: `9437184`; used only when the request sends a local file path instead of an HTTP/data URL)
+- `AI_MEDIA_FETCH_TIMEOUT_SECONDS` (default: `8`; used when Python converts localhost/private media URLs to base64)
 
 ## 4) Multimodal request payload
 
@@ -73,7 +74,7 @@ Set environment variables for `moodsphere-admin`:
 - `MOOD_AI_PY_BASE_URL=http://127.0.0.1:9001`
 - `MOOD_AI_PY_ANALYZE_PATH=/v1/mood/analyze`
 - `MOOD_AI_PY_TOKEN=replace_me` (optional)
-- `MOOD_AI_PY_TIMEOUT_MS=30000`
+- `MOOD_AI_PY_TIMEOUT_MS=60000`
 - `MOOD_AI_PY_FALLBACK_TO_MOCK=true`
 
 ## 6) Notes
@@ -81,3 +82,4 @@ Set environment variables for `moodsphere-admin`:
 - For Alibaba Cloud Bailian, you should configure API key with env var `DASHSCOPE_API_KEY`.
 - If Bailian call fails and `AI_FALLBACK_TO_RULE=true`, service will return rule-engine output instead of failing hard.
 - Qwen-Omni is called with streaming enabled and text output only. Images are sent as `image_url`; voice files are sent as `input_audio`.
+- If media URLs are `localhost`, `127.0.0.1`, or private LAN addresses, Python downloads them first and sends base64 data URLs to Qwen-Omni because Bailian cannot fetch local machine URLs from the cloud.

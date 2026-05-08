@@ -31,8 +31,10 @@ const request = config => {
     }).then(response => {
       let [error, res] = response
       if (error) {
-        toast('后端接口连接异常')
-        reject('后端接口连接异常')
+        const errMsg = error.errMsg || error.message || ''
+        const message = errMsg.includes('timeout') ? '系统接口请求超时' : '后端接口连接异常'
+        toast(message)
+        reject(message)
         return
       }
       const code = res.data.code || 200
@@ -49,9 +51,11 @@ const request = config => {
       } else if (code === 500) {
         toast(msg)
         reject('500')
+        return
       } else if (code !== 200) {
         toast(msg)
         reject(code)
+        return
       }
       resolve(res.data)
     })

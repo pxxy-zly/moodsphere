@@ -35,7 +35,8 @@ export function runMoodAnalyze(recordId) {
   return request({
     url: '/app/mood/analyze/run',
     method: 'post',
-    data: { recordId }
+    data: { recordId },
+    timeout: 90000
   })
 }
 
