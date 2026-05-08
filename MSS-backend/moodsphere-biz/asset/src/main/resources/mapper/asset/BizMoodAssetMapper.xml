@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moodsphere.asset.mapper.BizMoodAssetMapper">
+
+    <resultMap id="BizMoodAssetResultMap" type="BizMoodAsset">
+        <id property="id" column="id" />
+        <result property="recordId" column="record_id" />
+        <result property="assetType" column="asset_type" />
+        <result property="fileUrl" column="file_url" />
+        <result property="fileSize" column="file_size" />
+        <result property="mimeType" column="mime_type" />
+        <result property="duration" column="duration" />
+        <result property="thumbnailUrl" column="thumbnail_url" />
+        <result property="width" column="width" />
+        <result property="height" column="height" />
+        <result property="status" column="status" />
+        <result property="createTime" column="create_time" />
+        <result property="createBy" column="create_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="delFlag" column="del_flag" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <sql id="selectBizMoodAssetColumns">
+        select id, record_id, asset_type, file_url, file_size, mime_type, duration, thumbnail_url, width, height,
+               status, create_time, create_by, update_time, update_by, del_flag, remark
+        from biz_mood_asset
+    </sql>
+
+    <insert id="insertBizMoodAsset" parameterType="BizMoodAsset" useGeneratedKeys="true" keyProperty="id">
+        insert into biz_mood_asset
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="recordId != null">record_id,</if>
+            <if test="assetType != null">asset_type,</if>
+            <if test="fileUrl != null and fileUrl != ''">file_url,</if>
+            <if test="fileSize != null">file_size,</if>
+            <if test="mimeType != null and mimeType != ''">mime_type,</if>
+            <if test="duration != null">duration,</if>
+            <if test="thumbnailUrl != null and thumbnailUrl != ''">thumbnail_url,</if>
+            <if test="width != null">width,</if>
+            <if test="height != null">height,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null and updateBy != ''">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="delFlag != null">del_flag,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="recordId != null">#{recordId},</if>
+            <if test="assetType != null">#{assetType},</if>
+            <if test="fileUrl != null and fileUrl != ''">#{fileUrl},</if>
+            <if test="fileSize != null">#{fileSize},</if>
+            <if test="mimeType != null and mimeType != ''">#{mimeType},</if>
+            <if test="duration != null">#{duration},</if>
+            <if test="thumbnailUrl != null and thumbnailUrl != ''">#{thumbnailUrl},</if>
+            <if test="width != null">#{width},</if>
+            <if test="height != null">#{height},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null and updateBy != ''">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="delFlag != null">#{delFlag},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+        </trim>
+    </insert>
+
+    <select id="selectUnboundByIdsAndCreateBy" resultMap="BizMoodAssetResultMap">
+        <include refid="selectBizMoodAssetColumns" />
+        where record_id = 0
+          and del_flag = 0
+          and status = 1
+          and create_by = #{createBy}
+          and id in
+        <foreach collection="assetIds" item="assetId" open="(" separator="," close=")">
+            #{assetId}
+        </foreach>
+    </select>
+
+    <update id="bindAssetsToRecord">
+        update biz_mood_asset
+        set record_id = #{recordId},
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        where record_id = 0
+          and del_flag = 0
+          and status = 1
+          and create_by = #{createBy}
+          and id in
+        <foreach collection="assetIds" item="assetId" open="(" separator="," close=")">
+            #{assetId}
+        </foreach>
+    </update>
+
+</mapper>

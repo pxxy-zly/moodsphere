@@ -19,16 +19,46 @@
         />
         <view class="input-actions">
           <view class="action-icons">
-            <view class="icon-circle" @click="mockAction('语音输入')">
+            <view class="icon-circle" @click="handleChooseVoice">
               <text class="icon-text">🎤</text>
             </view>
-            <view class="icon-circle" @click="mockAction('图片上传')">
+            <view class="icon-circle" @click="handleChooseImage">
               <text class="icon-text">🖼️</text>
             </view>
           </view>
           <view class="counter" :class="{ 'counter-warn': form.contentText.length > 430 }">
             {{ form.contentText.length }}/500
           </view>
+        </view>
+      </view>
+
+      <view v-if="uploading || imageAssets.length || voiceAsset" class="panel-card asset-card">
+        <view class="section-title-row">
+          <view>
+            <text class="section-title">已添加素材</text>
+            <text class="section-desc">图片和语音会随本次记录一起保存</text>
+          </view>
+          <view v-if="uploading" class="uploading-tag">上传中...</view>
+        </view>
+
+        <view v-if="imageAssets.length" class="asset-subtitle">图片</view>
+        <view v-if="imageAssets.length" class="image-grid">
+          <view v-for="(item, index) in imageAssets" :key="item.assetId || item.fileUrl || index" class="image-item">
+            <image class="image-thumb" :src="item.thumbnailUrl || item.fileUrl" mode="aspectFill" @click="previewImages(index)"></image>
+            <view class="remove-badge" @click.stop="removeImageAsset(index)">×</view>
+          </view>
+        </view>
+
+        <view v-if="voiceAsset" class="asset-subtitle voice-subtitle">语音</view>
+        <view v-if="voiceAsset" class="voice-card">
+          <view class="voice-meta">
+            <text class="voice-icon">🎧</text>
+            <view class="voice-text">
+              <text class="voice-name">{{ voiceAsset.originalFileName || '语音素材' }}</text>
+              <text class="voice-desc">{{ formatVoiceDuration(voiceAsset.duration) }}</text>
+            </view>
+          </view>
+          <view class="remove-text" @click="removeVoiceAsset">移除</view>
         </view>
       </view>
 
@@ -123,12 +153,16 @@
 
 <script>
 import { createMoodRecord, runMoodAnalyze, buildMoodVector, generateMoodWeather } from '@/api/mood'
+import { uploadMoodImage, uploadMoodVoice } from '@/api/asset'
 
 export default {
   data() {
     return {
       submitting: false,
+      uploading: false,
       selectedTagMap: [],
+      imageAssets: [],
+      voiceAsset: null,
       form: {
         contentText: '',
         emotionIntensity: 5,
@@ -173,6 +207,79 @@ export default {
     this.$store.dispatch('setTabBarSelected', 2)
   },
   methods: {
+    async handleChooseImage() {
+      if (this.uploading) return
+      try {
+        const res = await this.chooseImageFiles()
+        const filePaths = (res.tempFilePaths || []).slice(0, Math.max(0, 3 - this.imageAssets.length))
+        if (!filePaths.length) return
+        this.uploading = true
+        for (const filePath of filePaths) {
+          const asset = await uploadMoodImage(filePath)
+          this.imageAssets.push(asset)
+        }
+      } catch (error) {
+        if (error && error.errMsg && error.errMsg.includes('cancel')) return
+        uni.showToast({ title: this.parseError(error), icon: 'none' })
+      } finally {
+        this.uploading = false
+      }
+    },
+    async handleChooseVoice() {
+      if (this.uploading) return
+      try {
+        const file = await this.chooseVoiceFile()
+        if (!file || !file.path) return
+        this.uploading = true
+        this.voiceAsset = await uploadMoodVoice(file.path, file.time || 0)
+      } catch (error) {
+        if (error && error.errMsg && error.errMsg.includes('cancel')) return
+        uni.showToast({ title: this.parseError(error), icon: 'none' })
+      } finally {
+        this.uploading = false
+      }
+    },
+    chooseImageFiles() {
+      return new Promise((resolve, reject) => {
+        uni.chooseImage({
+          count: 3,
+          sizeType: ['compressed'],
+          sourceType: ['album', 'camera'],
+          success: resolve,
+          fail: reject
+        })
+      })
+    },
+    chooseVoiceFile() {
+      return new Promise((resolve, reject) => {
+        uni.chooseMessageFile({
+          count: 1,
+          type: 'file',
+          extension: ['mp3', 'wav', 'm4a', 'aac'],
+          success: (res) => resolve((res.tempFiles || [])[0]),
+          fail: reject
+        })
+      })
+    },
+    previewImages(currentIndex) {
+      uni.previewImage({
+        urls: this.imageAssets.map(item => item.fileUrl),
+        current: this.imageAssets[currentIndex].fileUrl
+      })
+    },
+    removeImageAsset(index) {
+      this.imageAssets.splice(index, 1)
+    },
+    removeVoiceAsset() {
+      this.voiceAsset = null
+    },
+    formatVoiceDuration(duration) {
+      const total = Number(duration || 0)
+      if (!total) return '时长待获取'
+      const minutes = String(Math.floor(total / 60)).padStart(2, '0')
+      const seconds = String(total % 60).padStart(2, '0')
+      return `${minutes}:${seconds}`
+    },
     isTagSelected(tag) {
       return this.selectedTagMap.includes(tag)
     },
@@ -212,12 +319,13 @@ export default {
     },
     async handleSubmit() {
       const contentText = (this.form.contentText || '').trim()
-      if (!contentText) {
-        if (this.$modal && this.$modal.msgError) this.$modal.msgError('请先输入记录内容')
-        else uni.showToast({ title: '请先输入记录内容', icon: 'none' })
+      const assetIds = this.collectAssetIds()
+      if (!contentText && !assetIds.length) {
+        if (this.$modal && this.$modal.msgError) this.$modal.msgError('请先输入内容，或上传图片/语音')
+        else uni.showToast({ title: '请先输入内容，或上传图片/语音', icon: 'none' })
         return
       }
-      if (this.submitting) {
+      if (this.submitting || this.uploading) {
         return
       }
       this.submitting = true
@@ -229,11 +337,21 @@ export default {
         const createRes = await createMoodRecord({
           contentText,
           emotionIntensity: this.form.emotionIntensity,
-          isPublic: this.form.isPublic
+          isPublic: this.form.isPublic,
+          assetIds,
+          voiceDuration: this.voiceAsset ? this.voiceAsset.duration : 0
         })
         const recordId = createRes.recordId
         if (!recordId) {
           throw new Error('未获取到记录ID')
+        }
+
+        if (!contentText) {
+          if (this.$modal && this.$modal.closeLoading) this.$modal.closeLoading()
+          else uni.hideLoading()
+          uni.showToast({ title: '素材记录已保存，文本分析可稍后补充', icon: 'none' })
+          this.resetForm()
+          return
         }
 
         await runMoodAnalyze(recordId)
@@ -260,6 +378,21 @@ export default {
       if (error.msg) return error.msg
       if (error.message) return error.message
       return '提交失败，请稍后重试'
+    },
+    collectAssetIds() {
+      const assetIds = this.imageAssets.map(item => item.assetId)
+      if (this.voiceAsset && this.voiceAsset.assetId) {
+        assetIds.push(this.voiceAsset.assetId)
+      }
+      return assetIds
+    },
+    resetForm() {
+      this.form.contentText = ''
+      this.form.emotionIntensity = 5
+      this.form.isPublic = 0
+      this.selectedTagMap = []
+      this.imageAssets = []
+      this.voiceAsset = null
     }
   }
 }
@@ -389,6 +522,113 @@ export default {
 
 .panel-card {
   padding: 30rpx 32rpx;
+}
+
+.asset-card {
+  padding-bottom: 26rpx;
+}
+
+.uploading-tag {
+  color: #5c9ce6;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.asset-subtitle {
+  color: #7d899b;
+  font-size: 25rpx;
+  font-weight: 600;
+  margin-bottom: 16rpx;
+}
+
+.voice-subtitle {
+  margin-top: 24rpx;
+}
+
+.image-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+}
+
+.image-item {
+  position: relative;
+  height: 180rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+
+.image-thumb {
+  width: 100%;
+  height: 100%;
+  display: block;
+  background: #edf4ff;
+}
+
+.remove-badge {
+  position: absolute;
+  top: 10rpx;
+  right: 10rpx;
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(35, 48, 68, 0.72);
+  color: #fff;
+  font-size: 26rpx;
+}
+
+.voice-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  border-radius: 24rpx;
+  background: #f5f9ff;
+  border: 1rpx solid rgba(92, 156, 230, 0.12);
+}
+
+.voice-meta {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.voice-icon {
+  font-size: 34rpx;
+  margin-right: 18rpx;
+}
+
+.voice-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.voice-name {
+  color: #263449;
+  font-size: 27rpx;
+  font-weight: 600;
+  max-width: 420rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.voice-desc {
+  margin-top: 6rpx;
+  color: #7d899b;
+  font-size: 22rpx;
+}
+
+.remove-text {
+  color: #5c9ce6;
+  font-size: 24rpx;
+  font-weight: 600;
+  padding-left: 20rpx;
 }
 
 .section-title-row {

@@ -1,10 +1,13 @@
 package com.moodsphere.record.service.impl;
 
 import java.util.Date;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.moodsphere.asset.domain.vo.MoodAssetBindSummaryVo;
+import com.moodsphere.asset.service.IMoodAssetService;
 import com.moodsphere.common.exception.ServiceException;
 import com.moodsphere.common.utils.SecurityUtils;
 import com.moodsphere.common.utils.StringUtils;
@@ -19,6 +22,18 @@ import com.moodsphere.record.service.IMoodRecordService;
 @Service
 public class MoodRecordServiceImpl implements IMoodRecordService
 {
+    /** 记录类型：文本 */
+    private static final int RECORD_TYPE_TEXT = 0;
+
+    /** 记录类型：语音 */
+    private static final int RECORD_TYPE_VOICE = 1;
+
+    /** 记录类型：图片 */
+    private static final int RECORD_TYPE_IMAGE = 2;
+
+    /** 记录类型：混合 */
+    private static final int RECORD_TYPE_MIXED = 3;
+
     /** 记录状态：已提交 */
     private static final int RECORD_STATUS_SUBMITTED = 1;
 
@@ -37,6 +52,9 @@ public class MoodRecordServiceImpl implements IMoodRecordService
     @Autowired
     private BizMoodRecordMapper bizMoodRecordMapper;
 
+    @Autowired
+    private IMoodAssetService moodAssetService;
+
     /**
      * 创建情绪记录
      * 
@@ -51,19 +69,14 @@ public class MoodRecordServiceImpl implements IMoodRecordService
             throw new ServiceException("请求参数不能为空");
         }
         String contentText = body.getContentText() == null ? null : body.getContentText().trim();
-        if (StringUtils.isEmpty(contentText))
-        {
-            throw new ServiceException("记录文本不能为空");
-        }
-
         Long userId = SecurityUtils.getUserId();
         String username = defaultUsername(SecurityUtils.getUsername());
         Date now = new Date();
+        List<Long> assetIds = body.getAssetIds();
 
         BizMoodRecord record = new BizMoodRecord();
         record.setUserId(userId);
         record.setSourceType(1);
-        record.setRecordType(0);
         record.setContentText(contentText);
         record.setEmotionIntensity(normalizeIntensity(body.getEmotionIntensity()));
         record.setRecordTime(body.getRecordTime() == null ? now : body.getRecordTime());
@@ -83,10 +96,24 @@ public class MoodRecordServiceImpl implements IMoodRecordService
         record.setUpdateBy(username);
         record.setUpdateTime(now);
 
+        validateRecordPayload(contentText, assetIds);
+        MoodAssetBindSummaryVo assetSummary = moodAssetService.summarizeAssets(assetIds, username);
+        int derivedRecordType = resolveRecordType(contentText, assetSummary, body.getRecordType());
+        record.setRecordType(derivedRecordType);
+        record.setVoiceDuration(resolveVoiceDuration(body.getVoiceDuration(), assetSummary));
+        if (StringUtils.isEmpty(record.getContentText()) && derivedRecordType != RECORD_TYPE_TEXT)
+        {
+            record.setContentText(buildFallbackContent(derivedRecordType));
+        }
+
         int rows = bizMoodRecordMapper.insertBizMoodRecord(record);
         if (rows <= 0 || record.getId() == null)
         {
             throw new ServiceException("创建记录失败");
+        }
+        if (assetIds != null && !assetIds.isEmpty())
+        {
+            moodAssetService.bindAssetsToRecord(record.getId(), assetIds, username, now);
         }
         return record.getId();
     }
@@ -174,5 +201,64 @@ public class MoodRecordServiceImpl implements IMoodRecordService
     private String defaultUsername(String username)
     {
         return StringUtils.isEmpty(username) ? "system" : username;
+    }
+
+    private void validateRecordPayload(String contentText, List<Long> assetIds)
+    {
+        if (StringUtils.isEmpty(contentText) && (assetIds == null || assetIds.isEmpty()))
+        {
+            throw new ServiceException("记录文本、图片或语音至少保留一项");
+        }
+    }
+
+    private int resolveRecordType(String contentText, MoodAssetBindSummaryVo assetSummary, Integer requestedType)
+    {
+        boolean hasText = StringUtils.isNotEmpty(contentText);
+        boolean hasImage = assetSummary != null && assetSummary.isHasImage();
+        boolean hasVoice = assetSummary != null && assetSummary.isHasVoice();
+
+        if (hasText && !hasImage && !hasVoice)
+        {
+            return RECORD_TYPE_TEXT;
+        }
+        if (!hasText && hasVoice && !hasImage)
+        {
+            return RECORD_TYPE_VOICE;
+        }
+        if (!hasText && !hasVoice && hasImage)
+        {
+            return RECORD_TYPE_IMAGE;
+        }
+        if (requestedType != null && requestedType >= RECORD_TYPE_TEXT && requestedType <= RECORD_TYPE_MIXED)
+        {
+            return requestedType;
+        }
+        return RECORD_TYPE_MIXED;
+    }
+
+    private Integer resolveVoiceDuration(Integer requestedDuration, MoodAssetBindSummaryVo assetSummary)
+    {
+        if (requestedDuration != null && requestedDuration > 0)
+        {
+            return requestedDuration;
+        }
+        if (assetSummary != null && assetSummary.getMaxVoiceDuration() > 0)
+        {
+            return assetSummary.getMaxVoiceDuration();
+        }
+        return null;
+    }
+
+    private String buildFallbackContent(int recordType)
+    {
+        if (recordType == RECORD_TYPE_VOICE)
+        {
+            return "用户上传了一段语音记录";
+        }
+        if (recordType == RECORD_TYPE_IMAGE)
+        {
+            return "用户上传了一张图片记录";
+        }
+        return "用户上传了多媒体记录";
     }
 }

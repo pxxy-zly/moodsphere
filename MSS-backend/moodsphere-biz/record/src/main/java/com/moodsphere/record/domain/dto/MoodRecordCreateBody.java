@@ -2,6 +2,7 @@ package com.moodsphere.record.domain.dto;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 public class MoodRecordCreateBody
 {
@@ -24,6 +25,12 @@ public class MoodRecordCreateBody
     private BigDecimal latitude;
 
     private Date recordTime;
+
+    private List<Long> assetIds;
+
+    private Integer recordType;
+
+    private Integer voiceDuration;
 
     public String getContentText()
     {
@@ -123,6 +130,36 @@ public class MoodRecordCreateBody
     public void setRecordTime(Date recordTime)
     {
         this.recordTime = recordTime;
+    }
+
+    public List<Long> getAssetIds()
+    {
+        return assetIds;
+    }
+
+    public void setAssetIds(List<Long> assetIds)
+    {
+        this.assetIds = assetIds;
+    }
+
+    public Integer getRecordType()
+    {
+        return recordType;
+    }
+
+    public void setRecordType(Integer recordType)
+    {
+        this.recordType = recordType;
+    }
+
+    public Integer getVoiceDuration()
+    {
+        return voiceDuration;
+    }
+
+    public void setVoiceDuration(Integer voiceDuration)
+    {
+        this.voiceDuration = voiceDuration;
     }
 }
 
