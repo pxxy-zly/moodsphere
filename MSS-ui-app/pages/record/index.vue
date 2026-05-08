@@ -164,6 +164,38 @@
       </button>
     </view>
 
+    <view v-if="showAnalyzeOverlay" class="analyze-overlay">
+      <view class="analyze-overlay__glow"></view>
+      <view class="analyze-overlay__content">
+        <view class="analyze-orb">
+          <view class="analyze-orb__inner"></view>
+        </view>
+        <text class="analyze-overlay__kicker">MOOD WEATHER</text>
+        <text class="analyze-overlay__title">{{ analyzeStageText }}</text>
+        <text class="analyze-overlay__desc">{{ analyzeStageDesc }}</text>
+        <view class="analyze-progress">
+          <view class="analyze-progress__track">
+            <view class="analyze-progress__bar" :style="{ width: `${analyzeProgress}%` }"></view>
+          </view>
+          <text class="analyze-progress__text">{{ analyzeProgress }}%</text>
+        </view>
+        <view class="analyze-steps">
+          <view
+            v-for="(step, index) in analyzeSteps"
+            :key="step.key"
+            class="analyze-step"
+            :class="{
+              'analyze-step--active': index === analyzeStage,
+              'analyze-step--done': index < analyzeStage
+            }"
+          >
+            <view class="analyze-step__dot"></view>
+            <text class="analyze-step__label">{{ step.label }}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
     <custom-tab-bar ref="customTabBar"></custom-tab-bar>
   </view>
 </template>
@@ -180,6 +212,11 @@ export default {
       recording: false,
       recordingSeconds: 0,
       recordingHint: '',
+      showAnalyzeOverlay: false,
+      analyzeStage: 0,
+      analyzeStageText: '',
+      analyzeStageDesc: '',
+      analyzeProgress: 0,
       selectedTagMap: [],
       imageAssets: [],
       voiceAsset: null,
@@ -211,6 +248,11 @@ export default {
         { t: '饮食', e: '🍜' },
         { t: '独处', e: '🫧' },
         { t: '社交', e: '🎈' }
+      ],
+      analyzeSteps: [
+        { key: 'save', label: '保存', title: '收集此刻的心情', desc: '先把这一刻好好保存下来' },
+        { key: 'analyze', label: '识别', title: '识别情绪里的线索', desc: '正在理解文字、图片或语音里的感受' },
+        { key: 'weather', label: '天气', title: '生成你的专属天气', desc: '把情绪慢慢酿成今天的天气' }
       ]
     }
   },
@@ -230,9 +272,11 @@ export default {
     this.initRecorderManager()
   },
   onHide() {
+    this.closeAnalyzeOverlay()
     this.stopRecordingIfNeeded(true)
   },
   onUnload() {
+    this.closeAnalyzeOverlay()
     this.stopRecordingIfNeeded(true)
   },
   methods: {
@@ -454,6 +498,48 @@ export default {
     handlePublicChange(event) {
       this.form.isPublic = event.detail.value ? 1 : 0
     },
+    openAnalyzeOverlay() {
+      this.showAnalyzeOverlay = true
+      this.analyzeProgress = 6
+      this.setAnalyzeStage(0)
+      this.startAnalyzeProgress()
+    },
+    closeAnalyzeOverlay() {
+      this.stopAnalyzeProgress()
+      this.showAnalyzeOverlay = false
+      this.analyzeStage = 0
+      this.analyzeStageText = ''
+      this.analyzeStageDesc = ''
+      this.analyzeProgress = 0
+    },
+    setAnalyzeStage(index) {
+      const step = this.analyzeSteps[index] || this.analyzeSteps[0]
+      this.analyzeStage = index
+      this.analyzeStageText = step.title
+      this.analyzeStageDesc = step.desc
+      const minProgressMap = [12, 46, 78]
+      const minProgress = minProgressMap[index] || 12
+      if (this.analyzeProgress < minProgress) {
+        this.analyzeProgress = minProgress
+      }
+    },
+    startAnalyzeProgress() {
+      this.stopAnalyzeProgress()
+      this._analyzeProgressTimer = setInterval(() => {
+        const maxProgressMap = [36, 72, 94]
+        const maxProgress = maxProgressMap[this.analyzeStage] || 94
+        if (this.analyzeProgress < maxProgress) {
+          const delta = this.analyzeStage === 2 ? 1 : 2
+          this.analyzeProgress = Math.min(maxProgress, this.analyzeProgress + delta)
+        }
+      }, 280)
+    },
+    stopAnalyzeProgress() {
+      if (this._analyzeProgressTimer) {
+        clearInterval(this._analyzeProgressTimer)
+        this._analyzeProgressTimer = null
+      }
+    },
     async handleSubmit() {
       const contentText = (this.form.contentText || '').trim()
       const assetIds = this.collectAssetIds()
@@ -466,9 +552,7 @@ export default {
         return
       }
       this.submitting = true
-
-      if (this.$modal && this.$modal.loading) this.$modal.loading('生成中...')
-      else uni.showLoading({ title: '生成中...' })
+      this.openAnalyzeOverlay()
 
       try {
         const createRes = await createMoodRecord({
@@ -484,25 +568,23 @@ export default {
         }
 
         if (!contentText) {
-          if (this.$modal && this.$modal.closeLoading) this.$modal.closeLoading()
-          else uni.hideLoading()
+          this.closeAnalyzeOverlay()
           uni.showToast({ title: '素材记录已保存，文本分析可稍后补充', icon: 'none' })
           this.resetForm()
           return
         }
 
+        this.setAnalyzeStage(1)
         await runMoodAnalyze(recordId)
+        this.setAnalyzeStage(2)
         await buildMoodVector(recordId)
         await generateMoodWeather(recordId)
 
-        if (this.$modal && this.$modal.closeLoading) this.$modal.closeLoading()
-        else uni.hideLoading()
-
+        this.closeAnalyzeOverlay()
+        this.resetForm()
         this.$tab.navigateTo(`/pages/record/result?recordId=${recordId}`)
       } catch (error) {
-        if (this.$modal && this.$modal.closeLoading) this.$modal.closeLoading()
-        else uni.hideLoading()
-
+        this.closeAnalyzeOverlay()
         if (this.$modal && this.$modal.msgError) this.$modal.msgError(this.parseError(error))
         else uni.showToast({ title: this.parseError(error), icon: 'none' })
       } finally {
@@ -1069,6 +1151,174 @@ export default {
   padding: 26rpx 32rpx 30rpx;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(248, 251, 255, 0.92) 42%, #ffffff 100%);
   box-sizing: border-box;
+}
+
+.analyze-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(243, 248, 255, 0.82) 0%, rgba(248, 251, 255, 0.95) 100%);
+  backdrop-filter: blur(20rpx);
+  -webkit-backdrop-filter: blur(20rpx);
+}
+
+.analyze-overlay__glow {
+  position: absolute;
+  width: 520rpx;
+  height: 520rpx;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(92, 156, 230, 0.18) 0%, rgba(255, 181, 202, 0.14) 45%, rgba(255, 255, 255, 0) 76%);
+  filter: blur(12rpx);
+}
+
+.analyze-overlay__content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  padding: 0 72rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.analyze-orb {
+  width: 220rpx;
+  height: 220rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(110, 173, 243, 0.28) 0%, rgba(255, 188, 208, 0.24) 100%);
+  box-shadow: 0 18rpx 60rpx rgba(92, 156, 230, 0.16);
+  animation: analyze-orb-float 2.8s ease-in-out infinite;
+}
+
+.analyze-orb__inner {
+  width: 126rpx;
+  height: 126rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #76aff1 0%, #ffb8cb 100%);
+  box-shadow: inset 0 10rpx 16rpx rgba(255, 255, 255, 0.32);
+}
+
+.analyze-overlay__kicker {
+  margin-top: 34rpx;
+  color: #5c9ce6;
+  font-size: 20rpx;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+}
+
+.analyze-overlay__title {
+  margin-top: 18rpx;
+  color: #223247;
+  font-size: 42rpx;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.analyze-overlay__desc {
+  margin-top: 14rpx;
+  color: #6f8096;
+  font-size: 27rpx;
+  line-height: 1.6;
+}
+
+.analyze-progress {
+  width: 100%;
+  max-width: 520rpx;
+  margin-top: 34rpx;
+}
+
+.analyze-progress__track {
+  width: 100%;
+  height: 12rpx;
+  border-radius: 999rpx;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1rpx 4rpx rgba(92, 156, 230, 0.08);
+}
+
+.analyze-progress__bar {
+  height: 100%;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, #76aff1 0%, #95c2f7 45%, #ffb8cb 100%);
+  box-shadow: 0 6rpx 18rpx rgba(118, 175, 241, 0.22);
+  transition: width 0.35s ease;
+}
+
+.analyze-progress__text {
+  display: block;
+  margin-top: 12rpx;
+  text-align: right;
+  color: #7d899b;
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.analyze-steps {
+  width: 100%;
+  margin-top: 26rpx;
+  display: flex;
+  justify-content: center;
+  gap: 18rpx;
+}
+
+.analyze-step {
+  min-width: 132rpx;
+  padding: 16rpx 18rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1rpx solid rgba(151, 166, 190, 0.12);
+  transition: all 0.2s ease;
+}
+
+.analyze-step--active {
+  background: rgba(92, 156, 230, 0.14);
+  border-color: rgba(92, 156, 230, 0.28);
+  box-shadow: 0 10rpx 24rpx rgba(92, 156, 230, 0.1);
+}
+
+.analyze-step--done {
+  background: rgba(255, 255, 255, 0.86);
+  border-color: rgba(92, 156, 230, 0.2);
+}
+
+.analyze-step__dot {
+  width: 14rpx;
+  height: 14rpx;
+  margin-right: 10rpx;
+  border-radius: 50%;
+  background: #b4c6dc;
+}
+
+.analyze-step--active .analyze-step__dot,
+.analyze-step--done .analyze-step__dot {
+  background: #5c9ce6;
+}
+
+.analyze-step__label {
+  color: #4c6078;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+@keyframes analyze-orb-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-8rpx) scale(1.03);
+  }
 }
 
 .submit-btn {

@@ -370,6 +370,8 @@ docker exec mss-ai python -c "import urllib.request;print(urllib.request.urlopen
 
 **14. 常用运维命令**
 
+- 日常迭代发布（只更新后端/前端/AI、回滚、env 生效方式）：[ops-iterate.md](file:///d:/aZLY/A-MSS/02-code/document/deploy/ops-iterate.md)
+
 - 重启全部：
 
 ```bash
