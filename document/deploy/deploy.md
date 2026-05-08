@@ -6,7 +6,8 @@
 - API 走 `https://lingdone.cn/prod-api/*`，由 Nginx 反代到后端容器
 - MySQL、Redis、后端、Python AI、Nginx 全部在同一台服务器容器化运行
 - 后端通过内网地址 `http://ai:9011` 调用 AI（不对公网暴露 AI 端口）
-- 配置集中在 `/opt/mss/.env`、`/opt/mss/backend/backend.env`、`/opt/mss/ai/ai.env`
+- 配置集中在 `/opt/mss/.env`、`/opt/mss/backend/backend.env`、`/opt/mss/ai/.env`
+- 上传资源通过 `https://lingdone.cn/profile/**` 由 Nginx 直接映射到 `/data/moodsphere/upload`
 
 ***
 
@@ -128,7 +129,7 @@ REDIS_PASSWORD=CHANGE_ME_REDIS_PASSWORD
 SPRING_PROFILES_ACTIVE=druid
 
 # MySQL (Druid)
-SPRING_DATASOURCE_DRUID_MASTER_URL=jdbc:mysql://mysql:3306/moodsphere?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8
+SPRING_DATASOURCE_DRUID_MASTER_URL=jdbc:mysql://mysql:3306/moodsphere?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
 SPRING_DATASOURCE_DRUID_MASTER_USERNAME=root
 SPRING_DATASOURCE_DRUID_MASTER_PASSWORD=CHANGE_ME_ROOT_PASSWORD
 
@@ -153,24 +154,23 @@ MOOD_AI_PY_ENABLED=true
 MOOD_AI_PY_BASE_URL=http://ai:9011
 MOOD_AI_PY_ANALYZE_PATH=/v1/mood/analyze
 MOOD_AI_PY_TOKEN=CHANGE_ME_INTERNAL_TOKEN
-MOOD_AI_PY_TIMEOUT_MS=8000
+MOOD_AI_PY_TIMEOUT_MS=60000
 MOOD_AI_PY_FALLBACK_TO_MOCK=true
 ```
 
-**7.3** **`/opt/mss/ai/ai.env`**
+**7.3** **`/opt/mss/ai/.env`**
 
 ```env
-# AI service internal auth
 AI_API_TOKEN=CHANGE_ME_INTERNAL_TOKEN
-
-# Bailian model
 AI_USE_BAILIAN=true
 AI_FALLBACK_TO_RULE=true
-AI_MODEL_NAME=qwen-plus
-AI_MODEL_VERSION=latest
-AI_PROMPT_VERSION=p1-bailian-json
+AI_MODEL_NAME=qwen3.5-omni-plus-2026-03-15
+AI_MODEL_VERSION=2026-03-15
+AI_PROMPT_VERSION=p3-qwen-omni-multimodal-json
+AI_MAX_MEDIA_ASSETS=12
+AI_MAX_INLINE_FILE_BYTES=9437184
+AI_MEDIA_FETCH_TIMEOUT_SECONDS=8
 
-# Alibaba Cloud Bailian (DashScope OpenAI-compatible)
 DASHSCOPE_API_KEY=CHANGE_ME_DASHSCOPE_API_KEY
 DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 ```
@@ -180,6 +180,7 @@ DASHSCOPE_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 - `MOOD_AI_PY_TOKEN` 与 `AI_API_TOKEN` 必须一致
 - `DASHSCOPE_API_KEY` 必填
 - 这些环境变量会覆盖后端与 AI 服务默认配置
+- Qwen-Omni 图片/语音分析耗时会高于纯文本，`MOOD_AI_PY_TIMEOUT_MS` 建议不少于 `60000`
 
 ***
 
@@ -221,7 +222,7 @@ services:
     container_name: mss-ai
     restart: always
     env_file:
-      - /opt/mss/ai/ai.env
+      - /opt/mss/ai/.env
     expose:
       - "9011"
 
@@ -255,11 +256,13 @@ services:
       - /opt/mss/nginx/default.conf:/etc/nginx/conf.d/default.conf
       - /opt/mss/nginx/certbot:/var/www/certbot
       - /etc/letsencrypt:/etc/letsencrypt
+      - /data/moodsphere/upload:/data/moodsphere/upload
     depends_on:
       - backend
 ```
 
 > 如果宿主机已有 MySQL/Redis，请删除 `3306:3306`、`6379:6379` 端口映射，避免冲突。
+> AI 服务只需要被 backend 通过 Docker 内网访问，默认使用 `expose`。如果需要临时从宿主机调试 AI，可把 `expose` 改成 `ports: ["9011:9011"]`，调试结束后建议恢复内网访问。
 
 ***
 
@@ -287,11 +290,19 @@ server {
     ssl_certificate /etc/letsencrypt/live/lingdone.cn/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/lingdone.cn/privkey.pem;
 
+    client_max_body_size 100m;
+
     root /usr/share/nginx/html;
     index index.html;
 
-    location / {
-        try_files $uri $uri/ /index.html;
+    # 上传图片/语音静态资源
+    # 后端 RUOYI_PROFILE=/data/moodsphere/upload
+    # URL /profile/upload/a.png -> 文件 /data/moodsphere/upload/upload/a.png
+    location /profile/ {
+        alias /data/moodsphere/upload/;
+        try_files $uri =404;
+        access_log off;
+        expires 7d;
     }
 
     location /prod-api/ {
@@ -299,6 +310,13 @@ server {
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port 443;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
     }
 }
 ```
@@ -365,6 +383,27 @@ docker logs -f mss-ai
 ```bash
 docker exec mss-ai python -c "import urllib.request;print(urllib.request.urlopen('http://127.0.0.1:9011/health').read().decode())"
 ```
+
+- 验证上传资源映射。先确认 Nginx 容器能看到上传文件：
+
+```bash
+docker exec -it mss-nginx ls -l /data/moodsphere/upload/upload/2026/05/08/
+```
+
+再确认公网 URL 返回真实图片，而不是前端 HTML：
+
+```bash
+curl -I https://lingdone.cn/profile/upload/2026/05/08/your-image.png
+```
+
+正确响应应包含：
+
+```text
+HTTP/1.1 200 OK
+Content-Type: image/png
+```
+
+如果 `Content-Type` 是 `text/html`，说明 `/profile/` 没有命中静态资源 location，通常是 Nginx 配置未生效、容器未重建、或上传目录未挂载到 Nginx 容器。
 
 ***
 
