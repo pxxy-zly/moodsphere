@@ -17,6 +17,16 @@ public interface IMoodVectorService
     BizEmotionVector buildVector(Long recordId);
 
     /**
+     * 系统内部构建情绪向量
+     *
+     * @param recordId 记录ID
+     * @param userId 用户ID
+     * @param username 操作人
+     * @return 情绪向量实体
+     */
+    BizEmotionVector buildVectorForUser(Long recordId, Long userId, String username);
+
+    /**
      * 获取情绪向量
      * 
      * @param recordId 记录ID
@@ -24,5 +34,4 @@ public interface IMoodVectorService
      */
     BizEmotionVector getVector(Long recordId);
 }
-
 

@@ -21,6 +21,16 @@ public interface IMoodWeatherService
     BizWeatherMapping generateWeather(Long recordId);
 
     /**
+     * 系统内部生成情绪天气
+     *
+     * @param recordId 记录ID
+     * @param userId 用户ID
+     * @param username 操作人
+     * @return 天气映射
+     */
+    BizWeatherMapping generateWeatherForUser(Long recordId, Long userId, String username);
+
+    /**
      * 获取天气映射
      * 
      * @param recordId 记录ID
@@ -58,4 +68,3 @@ public interface IMoodWeatherService
      */
     List<BizWeatherSnapshot> listRecentSnapshots(Integer limit);
 }
-

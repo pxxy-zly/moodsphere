@@ -49,9 +49,15 @@ public class MoodVectorServiceImpl implements IMoodVectorService
     @Transactional(rollbackFor = Exception.class)
     public BizEmotionVector buildVector(Long recordId)
     {
+        return buildVectorForUser(recordId, SecurityUtils.getUserId(), defaultUsername(SecurityUtils.getUsername()));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BizEmotionVector buildVectorForUser(Long recordId, Long userId, String username)
+    {
         checkRecordId(recordId);
-        Long userId = SecurityUtils.getUserId();
-        String username = defaultUsername(SecurityUtils.getUsername());
+        String operator = defaultUsername(username);
 
         BizMoodRecord record = bizMoodRecordMapper.selectByIdAndUserId(recordId, userId);
         if (record == null)
@@ -87,9 +93,9 @@ public class MoodVectorServiceImpl implements IMoodVectorService
         vector.setDimensionJson(buildDimensionJson(analysisResult, intensityRate));
         vector.setConfidenceScore(dec(calculateConfidenceScore(analysisResult.getRiskLevel())));
         vector.setDelFlag(0);
-        vector.setCreateBy(username);
+        vector.setCreateBy(operator);
         vector.setCreateTime(now);
-        vector.setUpdateBy(username);
+        vector.setUpdateBy(operator);
         vector.setUpdateTime(now);
 
         bizEmotionVectorMapper.upsertBizEmotionVector(vector);

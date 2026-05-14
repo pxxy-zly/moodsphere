@@ -447,67 +447,94 @@ def analyze(
     x_request_id: str | None = Header(default=None),
 ) -> AnalyzeResponse:
     start = time.time()
-    text = (payload.contentText or "").strip()
-    if not text and not iter_media_assets(payload):
-        raise HTTPException(status_code=400, detail="contentText or mediaAssets is required")
-    provider = "python-rule"
-    model_name = "rule-python-v1"
-    model_version = AI_MODEL_VERSION
-    llm_json: dict | None = None
-    fallback_error: str | None = None
-    if AI_USE_BAILIAN:
-        try:
-            llm_json = call_bailian_llm(payload)
-            provider = "aliyun-bailian"
-            model_name = AI_MODEL_NAME
-        except Exception as ex:
-            fallback_error = str(ex)
-            logger.warning("Bailian call failed, fallback=%s, err=%s", AI_FALLBACK_TO_RULE, ex)
-            if not AI_FALLBACK_TO_RULE:
-                raise HTTPException(status_code=502, detail=f"Bailian call failed: {ex}") from ex
-    else:
-        fallback_error = "AI_USE_BAILIAN=false"
-
-    if llm_json:
-        primary = str(llm_json.get("primaryEmotion") or "calm")
-        secondary = str(llm_json.get("secondaryEmotion") or "confused")
-        keywords = ensure_keywords(llm_json.get("emotionKeywords"), text)
-        scene = str(llm_json.get("sceneRecognition") or detect_scene(text.lower()))
-        risk_level = clamp_risk_level(llm_json.get("riskLevel"))
-        risk_reason = str(llm_json.get("riskReason") or "模型未给出风险原因")
-        scores = normalize_scores(llm_json.get("emotionScores"), primary, secondary, payload.emotionIntensity)
-        summary = str(llm_json.get("aiSummary") or f"主情绪为{primary}，次情绪为{secondary}。")
-    else:
-        _, primary, secondary, risk_level, risk_reason, scene, keywords, scores, summary = build_rule_result(payload)
-
     request_id = x_request_id or payload.traceId or uuid.uuid4().hex
-    cost_ms = max(1, int((time.time() - start) * 1000))
-    raw = {
-        "mode": "bailian" if llm_json else "python-rule",
-        "fallbackReason": fallback_error,
-        "mediaAssetCount": len(iter_media_assets(payload)),
-        "primaryEmotion": primary,
-        "secondaryEmotion": secondary,
-        "riskLevel": risk_level,
-        "scene": scene,
-        "keywords": keywords,
-        "scores": scores,
-        "llm": llm_json,
-    }
-    return AnalyzeResponse(
-        primaryEmotion=primary,
-        secondaryEmotion=secondary,
-        emotionKeywords=keywords,
-        emotionScores=scores,
-        sceneRecognition=scene,
-        riskLevel=risk_level,
-        riskReason=risk_reason,
-        aiSummary=summary,
-        rawResponse=raw,
-        provider=provider,
-        modelName=model_name,
-        modelVersion=model_version,
-        promptVersion=AI_PROMPT_VERSION,
-        requestId=request_id,
-        analysisCostMs=cost_ms,
+    media_assets = iter_media_assets(payload)
+    text = (payload.contentText or "").strip()
+    logger.info(
+        "Analyze request start, requestId=%s, recordId=%s, model=%s, mediaCount=%s",
+        request_id,
+        payload.recordId,
+        AI_MODEL_NAME,
+        len(media_assets),
     )
+    try:
+        if not text and not media_assets:
+            raise HTTPException(status_code=400, detail="contentText or mediaAssets is required")
+        provider = "python-rule"
+        model_name = "rule-python-v1"
+        model_version = AI_MODEL_VERSION
+        llm_json: dict | None = None
+        fallback_error: str | None = None
+        if AI_USE_BAILIAN:
+            try:
+                llm_json = call_bailian_llm(payload)
+                provider = "aliyun-bailian"
+                model_name = AI_MODEL_NAME
+            except Exception as ex:
+                fallback_error = str(ex)
+                logger.warning(
+                    "Bailian call failed, requestId=%s, recordId=%s, fallback=%s, err=%s",
+                    request_id,
+                    payload.recordId,
+                    AI_FALLBACK_TO_RULE,
+                    ex,
+                )
+                if not AI_FALLBACK_TO_RULE:
+                    raise HTTPException(status_code=502, detail=f"Bailian call failed: {ex}") from ex
+        else:
+            fallback_error = "AI_USE_BAILIAN=false"
+
+        if llm_json:
+            primary = str(llm_json.get("primaryEmotion") or "calm")
+            secondary = str(llm_json.get("secondaryEmotion") or "confused")
+            keywords = ensure_keywords(llm_json.get("emotionKeywords"), text)
+            scene = str(llm_json.get("sceneRecognition") or detect_scene(text.lower()))
+            risk_level = clamp_risk_level(llm_json.get("riskLevel"))
+            risk_reason = str(llm_json.get("riskReason") or "模型未给出风险原因")
+            scores = normalize_scores(llm_json.get("emotionScores"), primary, secondary, payload.emotionIntensity)
+            summary = str(llm_json.get("aiSummary") or f"主情绪为{primary}，次情绪为{secondary}。")
+        else:
+            _, primary, secondary, risk_level, risk_reason, scene, keywords, scores, summary = build_rule_result(payload)
+
+        cost_ms = max(1, int((time.time() - start) * 1000))
+        raw = {
+            "mode": "bailian" if llm_json else "python-rule",
+            "fallbackReason": fallback_error,
+            "mediaAssetCount": len(media_assets),
+            "primaryEmotion": primary,
+            "secondaryEmotion": secondary,
+            "riskLevel": risk_level,
+            "scene": scene,
+            "keywords": keywords,
+            "scores": scores,
+            "llm": llm_json,
+        }
+        logger.info(
+            "Analyze request done, requestId=%s, recordId=%s, provider=%s, costMs=%s",
+            request_id,
+            payload.recordId,
+            provider,
+            cost_ms,
+        )
+        return AnalyzeResponse(
+            primaryEmotion=primary,
+            secondaryEmotion=secondary,
+            emotionKeywords=keywords,
+            emotionScores=scores,
+            sceneRecognition=scene,
+            riskLevel=risk_level,
+            riskReason=risk_reason,
+            aiSummary=summary,
+            rawResponse=raw,
+            provider=provider,
+            modelName=model_name,
+            modelVersion=model_version,
+            promptVersion=AI_PROMPT_VERSION,
+            requestId=request_id,
+            analysisCostMs=cost_ms,
+        )
+    except HTTPException:
+        raise
+    except Exception as ex:
+        logger.exception("Analyze request failed, requestId=%s, recordId=%s", request_id, payload.recordId)
+        raise HTTPException(status_code=500, detail=f"Analyze failed: {ex}") from ex

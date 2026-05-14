@@ -54,10 +54,16 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
     @Transactional(rollbackFor = Exception.class)
     public BizWeatherMapping generateWeather(Long recordId)
     {
+        return generateWeatherForUser(recordId, SecurityUtils.getUserId(), defaultUsername(SecurityUtils.getUsername()));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BizWeatherMapping generateWeatherForUser(Long recordId, Long userId, String username)
+    {
         checkRecordId(recordId);
 
-        Long userId = SecurityUtils.getUserId();
-        String username = defaultUsername(SecurityUtils.getUsername());
+        String operator = defaultUsername(username);
         BizMoodRecord record = bizMoodRecordMapper.selectByIdAndUserId(recordId, userId);
         if (record == null)
         {
@@ -98,13 +104,13 @@ public class MoodWeatherServiceImpl implements IMoodWeatherService
         mapping.setAnimationSeed((int) (Math.abs(recordId % 100000L)));
         mapping.setExtraParams(buildMappingExtraParams(vector));
         mapping.setDelFlag(0);
-        mapping.setCreateBy(username);
+        mapping.setCreateBy(operator);
         mapping.setCreateTime(now);
-        mapping.setUpdateBy(username);
+        mapping.setUpdateBy(operator);
         mapping.setUpdateTime(now);
         bizWeatherMappingMapper.upsertBizWeatherMapping(mapping);
 
-        refreshDailySnapshot(userId, record.getRecordTime(), username);
+        refreshDailySnapshot(userId, record.getRecordTime(), operator);
         return bizWeatherMappingMapper.selectByRecordId(recordId);
     }
 

@@ -36,13 +36,29 @@ export function runMoodAnalyze(recordId) {
     url: '/app/mood/analyze/run',
     method: 'post',
     data: { recordId },
-    timeout: 90000
+    timeout: 15000
   })
 }
 
 export function getMoodAnalyzeResult(recordId) {
   return request({
     url: `/app/mood/analyze/result/${recordId}`,
+    method: 'get'
+  })
+}
+
+export function createMoodAnalyzeTask(recordId) {
+  return request({
+    url: '/app/mood/analyze/tasks',
+    method: 'post',
+    data: { recordId },
+    timeout: 15000
+  })
+}
+
+export function getMoodAnalyzeTask(taskId) {
+  return request({
+    url: `/app/mood/analyze/tasks/${taskId}`,
     method: 'get'
   })
 }

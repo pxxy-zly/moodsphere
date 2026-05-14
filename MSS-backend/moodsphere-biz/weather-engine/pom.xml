@@ -28,6 +28,10 @@
             <groupId>com.moodsphere</groupId>
             <artifactId>vector</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.moodsphere</groupId>
+            <artifactId>ai-analyze</artifactId>
+        </dependency>
     </dependencies>
 
 </project>

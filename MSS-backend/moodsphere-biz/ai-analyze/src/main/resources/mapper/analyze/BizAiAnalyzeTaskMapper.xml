@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.moodsphere.analyze.mapper.BizAiAnalyzeTaskMapper">
+
+    <resultMap id="BizAiAnalyzeTaskResultMap" type="BizAiAnalyzeTask">
+        <id property="id" column="id" />
+        <result property="taskNo" column="task_no" />
+        <result property="recordId" column="record_id" />
+        <result property="userId" column="user_id" />
+        <result property="taskStatus" column="task_status" />
+        <result property="failCode" column="fail_code" />
+        <result property="failMessage" column="fail_message" />
+        <result property="retryCount" column="retry_count" />
+        <result property="requestSnapshot" column="request_snapshot" />
+        <result property="responseSnapshot" column="response_snapshot" />
+        <result property="provider" column="provider" />
+        <result property="modelName" column="model_name" />
+        <result property="modelVersion" column="model_version" />
+        <result property="promptVersion" column="prompt_version" />
+        <result property="requestId" column="request_id" />
+        <result property="analysisCostMs" column="analysis_cost_ms" />
+        <result property="queuedAt" column="queued_at" />
+        <result property="startedAt" column="started_at" />
+        <result property="finishedAt" column="finished_at" />
+        <result property="createTime" column="create_time" />
+        <result property="createBy" column="create_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="delFlag" column="del_flag" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <sql id="selectBizAiAnalyzeTaskColumns">
+        select id, task_no, record_id, user_id, task_status, fail_code, fail_message, retry_count, request_snapshot,
+               response_snapshot, provider, model_name, model_version, prompt_version, request_id, analysis_cost_ms,
+               queued_at, started_at, finished_at, create_time, create_by, update_time, update_by, del_flag, remark
+        from biz_ai_analyze_task
+    </sql>
+
+    <insert id="insertBizAiAnalyzeTask" parameterType="BizAiAnalyzeTask" useGeneratedKeys="true" keyProperty="id">
+        insert into biz_ai_analyze_task (
+            task_no, record_id, user_id, task_status, fail_code, fail_message, retry_count, request_snapshot,
+            response_snapshot, provider, model_name, model_version, prompt_version, request_id, analysis_cost_ms,
+            queued_at, started_at, finished_at, create_by, create_time, update_by, update_time, del_flag, remark
+        ) values (
+            #{taskNo}, #{recordId}, #{userId}, #{taskStatus}, #{failCode}, #{failMessage}, #{retryCount}, #{requestSnapshot},
+            #{responseSnapshot}, #{provider}, #{modelName}, #{modelVersion}, #{promptVersion}, #{requestId}, #{analysisCostMs},
+            #{queuedAt}, #{startedAt}, #{finishedAt}, #{createBy}, #{createTime}, #{updateBy}, #{updateTime}, #{delFlag}, #{remark}
+        )
+    </insert>
+
+    <select id="selectByIdAndUserId" resultMap="BizAiAnalyzeTaskResultMap">
+        <include refid="selectBizAiAnalyzeTaskColumns" />
+        where id = #{id}
+          and user_id = #{userId}
+          and del_flag = 0
+        limit 1
+    </select>
+
+    <select id="selectLatestByRecordIdAndUserId" resultMap="BizAiAnalyzeTaskResultMap">
+        <include refid="selectBizAiAnalyzeTaskColumns" />
+        where record_id = #{recordId}
+          and user_id = #{userId}
+          and del_flag = 0
+        order by id desc
+        limit 1
+    </select>
+
+    <select id="selectActiveByRecordIdAndUserId" resultMap="BizAiAnalyzeTaskResultMap">
+        <include refid="selectBizAiAnalyzeTaskColumns" />
+        where record_id = #{recordId}
+          and user_id = #{userId}
+          and task_status in (0, 1)
+          and del_flag = 0
+        order by id desc
+        limit 1
+    </select>
+
+    <select id="selectById" resultMap="BizAiAnalyzeTaskResultMap">
+        <include refid="selectBizAiAnalyzeTaskColumns" />
+        where id = #{id}
+          and del_flag = 0
+        limit 1
+    </select>
+
+    <update id="markRunning">
+        update biz_ai_analyze_task
+        set task_status = #{runningStatus},
+            started_at = #{startedAt},
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        where id = #{id}
+          and task_status = #{queuedStatus}
+          and del_flag = 0
+    </update>
+
+    <update id="markSuccess" parameterType="BizAiAnalyzeTask">
+        update biz_ai_analyze_task
+        set task_status = #{taskStatus},
+            fail_code = null,
+            fail_message = null,
+            response_snapshot = #{responseSnapshot},
+            provider = #{provider},
+            model_name = #{modelName},
+            model_version = #{modelVersion},
+            prompt_version = #{promptVersion},
+            request_id = #{requestId},
+            analysis_cost_ms = #{analysisCostMs},
+            finished_at = #{finishedAt},
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        where id = #{id}
+          and del_flag = 0
+    </update>
+
+    <update id="markFail" parameterType="BizAiAnalyzeTask">
+        update biz_ai_analyze_task
+        set task_status = #{taskStatus},
+            fail_code = #{failCode},
+            fail_message = #{failMessage},
+            request_id = #{requestId},
+            analysis_cost_ms = #{analysisCostMs},
+            finished_at = #{finishedAt},
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        where id = #{id}
+          and del_flag = 0
+    </update>
+
+    <select id="selectQueuedTasks" resultMap="BizAiAnalyzeTaskResultMap">
+        <include refid="selectBizAiAnalyzeTaskColumns" />
+        where task_status = 0
+          and del_flag = 0
+        order by id asc
+        limit #{limit}
+    </select>
+
+    <update id="markStaleRunningFailed">
+        update biz_ai_analyze_task
+        set task_status = #{failStatus},
+            fail_code = #{failCode},
+            fail_message = #{failMessage},
+            finished_at = #{updateTime},
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        where task_status = #{runningStatus}
+          and started_at is not null
+          and started_at &lt; #{deadline}
+          and del_flag = 0
+    </update>
+</mapper>

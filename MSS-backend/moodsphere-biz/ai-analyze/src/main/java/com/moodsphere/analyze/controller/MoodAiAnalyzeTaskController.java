@@ -13,39 +13,25 @@ import com.moodsphere.analyze.service.IMoodAiAnalyzeService;
 import com.moodsphere.common.core.domain.AjaxResult;
 
 /**
- * AI情绪分析控制器
- * 提供情绪分析相关的接口，包括执行分析和获取分析结果
+ * AI 情绪分析任务控制器
  */
 @RestController
-@RequestMapping("/app/mood/analyze")
-public class MoodAiAnalyzeController
+@RequestMapping("/app/mood/analyze/tasks")
+public class MoodAiAnalyzeTaskController
 {
     @Autowired
     private IMoodAiAnalyzeService moodAiAnalyzeService;
 
-    /**
-     * 执行AI情绪分析
-     * 
-     * @param body 请求体，包含记录ID
-     * @return 分析结果
-     */
-    @PostMapping("/run")
-    public AjaxResult run(@RequestBody(required = false) MoodAnalyzeRunBody body)
+    @PostMapping
+    public AjaxResult createTask(@RequestBody(required = false) MoodAnalyzeRunBody body)
     {
         Long recordId = body == null ? null : body.getRecordId();
         return AjaxResult.success(moodAiAnalyzeService.submitAnalyzeTask(recordId));
     }
 
-    /**
-     * 获取情绪分析结果
-     * 
-     * @param recordId 记录ID
-     * @return 分析结果
-     */
-    @GetMapping("/result/{recordId}")
-    public AjaxResult result(@PathVariable Long recordId)
+    @GetMapping("/{taskId}")
+    public AjaxResult getTask(@PathVariable Long taskId)
     {
-        return AjaxResult.success(moodAiAnalyzeService.getAnalyzeTaskByRecordId(recordId));
+        return AjaxResult.success(moodAiAnalyzeService.getAnalyzeTaskByTaskId(taskId));
     }
 }
-

@@ -1,18 +1,27 @@
 <template>
   <view class="result-page">
-    <!-- 加载状态 -->
-    <view v-if="loading" class="state-card">
+    <!-- 初始加载 -->
+    <view v-if="loading && !analysis && !isPendingTask" class="state-card">
       <view class="loading-icon">🔮</view>
       <view class="state-title gradient-text">正在解析你的心情</view>
       <view class="state-text">AI 正在感受你的情绪波动，请稍候...</view>
     </view>
 
-    <!-- 错误状态 -->
-    <view v-else-if="errorMsg" class="state-card error">
+    <!-- 任务进行中 -->
+    <view v-else-if="isPendingTask" class="state-card">
+      <view class="loading-icon">🫧</view>
+      <view class="state-title gradient-text">{{ pendingTitle }}</view>
+      <view class="state-text">{{ pendingText }}</view>
+      <view class="state-tip" v-if="taskId">任务ID：{{ taskId }}</view>
+      <button class="ghost-btn" @click="refreshTask">立即刷新</button>
+    </view>
+
+    <!-- 致命错误状态 -->
+    <view v-else-if="fatalErrorMsg && !analysis" class="state-card error">
       <view class="state-icon">☁️</view>
       <view class="state-title error-text">解析遇到小乱流</view>
-      <view class="state-text">{{ errorMsg }}</view>
-      <button class="ghost-btn" @click="loadData">重新感受</button>
+      <view class="state-text">{{ fatalErrorMsg }}</view>
+      <button class="ghost-btn" @click="retryAnalyze">重新发起分析</button>
     </view>
 
     <!-- 结果展示 -->
@@ -52,12 +61,20 @@
           <view class="summary-header">💌 AI 寄语</view>
           <view class="summary">{{ analysis ? analysis.aiSummary : '生活明朗，万物可爱。' }}</view>
         </view>
+
+        <view v-if="derivedErrorMsg" class="inline-notice">
+          <text>{{ derivedErrorMsg }}</text>
+        </view>
       </view>
 
       <!-- 情绪向量卡片 -->
       <view class="card vector-card">
         <view class="card-title">📊 情绪雷达</view>
-        <view class="grid">
+        <view v-if="derivedLoading && !vector" class="section-empty">
+          <view class="empty-title">正在生成情绪向量</view>
+          <view class="empty-text">AI 已完成情绪分析，正在把感受转换成可视化雷达。</view>
+        </view>
+        <view v-else-if="vector" class="grid">
           <view v-for="item in vectorItems" :key="item.key" class="grid-item">
             <view class="grid-label">{{ item.label }}</view>
             <view class="grid-value">{{ formatVectorValue(vector ? vector[item.key] : null) }}</view>
@@ -65,6 +82,10 @@
               <view class="grid-bar-fill" :style="{ width: formatVectorPercent(vector ? vector[item.key] : null) }"></view>
             </view>
           </view>
+        </view>
+        <view v-else class="section-empty">
+          <view class="empty-title">暂未生成情绪向量</view>
+          <view class="empty-text">后端会自动生成情绪向量，如果刚完成分析，可以下拉刷新或稍后回来查看。</view>
         </view>
       </view>
 
@@ -112,29 +133,50 @@
           <text class="item-label">色彩饱和度</text>
           <text class="item-value highlight-blue">{{ weather.saturation || '--' }}%</text>
         </view>
+        <view v-if="derivedLoading && !weather" class="section-empty">
+          <view class="empty-title">正在生成你的心境天气</view>
+          <view class="empty-text">正在把情绪向量映射成天气表现，请再等一下。</view>
+        </view>
+        <view v-else-if="!weather" class="section-empty">
+          <view class="empty-title">天气结果还没准备好</view>
+          <view class="empty-text">后端会自动生成心境天气，如果刚完成分析，可以下拉刷新或稍后再看。</view>
+        </view>
       </view>
 
-      <button class="primary-btn" @click="goWeather">进入我的气象站 🌈</button>
+      <button class="primary-btn" @click="goWeather">{{ weather ? '进入我的气象站 🌈' : '先去气象站看看 🌈' }}</button>
     </view>
   </view>
 </template>
 
 <script>
-// 这里保持你的原生 API 引用不变
-import { getMoodAnalyzeResult, getMoodVector, getMoodWeatherMapping } from '@/api/mood'
+import {
+  createMoodAnalyzeTask,
+  getMoodAnalyzeResult,
+  getMoodAnalyzeTask,
+  getMoodVector,
+  getMoodWeatherMapping
+} from '@/api/mood'
 
 export default {
   data() {
     return {
       recordId: 0,
+      taskId: 0,
       loading: false,
       errorMsg: '',
       analyzeStatus: 0,
+      taskStatus: '',
+      pollIntervalMs: 2500,
+      taskErrorCode: '',
+      taskErrorMessage: '',
       analysis: null,
       vector: null,
       weather: null,
       pollTimer: null,
       pollTimes: 0,
+      maxPollTimes: 48,
+      derivedLoading: false,
+      derivedErrorMsg: '',
       vectorItems: [
         { key: 'valence', label: '愉悦度' },
         { key: 'arousal', label: '激活度' },
@@ -154,10 +196,36 @@ export default {
       const keywords = this.analysis.emotionKeywords
       if (keywords.includes('、')) return keywords.split('、').filter(item => item.trim())
       return keywords.split(',').filter(item => item.trim())
+    },
+    isPendingTask() {
+      if (this.errorMsg) {
+        return false
+      }
+      return this.analyzeStatus === 0 || ['QUEUED', 'RUNNING', 'PENDING'].includes(this.taskStatus)
+    },
+    fatalErrorMsg() {
+      return this.taskErrorMessage || this.errorMsg
+    },
+    pendingTitle() {
+      const titleMap = {
+        QUEUED: '正在排队进入分析',
+        RUNNING: 'AI 正在解析你的情绪',
+        PENDING: '正在准备分析任务'
+      }
+      return titleMap[this.taskStatus] || '正在解析你的心情'
+    },
+    pendingText() {
+      const textMap = {
+        QUEUED: '记录已保存，系统正在排队处理你的情绪分析任务。',
+        RUNNING: '文字、图片和语音线索正在被理解，向量和天气会在分析完成后自动生成。',
+        PENDING: '任务正在准备中，请稍候。'
+      }
+      return textMap[this.taskStatus] || 'AI 正在感受你的情绪波动，请稍候...'
     }
   },
   onLoad(options) {
     this.recordId = Number(options.recordId || 0)
+    this.taskId = Number(options.taskId || 0)
     if (!this.recordId) {
       this.errorMsg = '心境信号丢失了 (缺少recordId)'
       return
@@ -168,65 +236,185 @@ export default {
     this.clearPolling()
   },
   methods: {
-    async loadData() {
+    async loadData(options = {}) {
+      const silent = options.silent === true
+      if (!silent) {
+        this.loading = true
+        this.errorMsg = ''
+      }
+      try {
+        await this.fetchAnalyzeStatus()
+        if (this.isPendingTask) {
+          this.vector = null
+          this.weather = null
+          this.derivedErrorMsg = ''
+          this.startPolling()
+          return
+        }
+        this.clearPolling()
+        if (this.analyzeStatus === 2 || this.taskStatus === 'FAIL') {
+          this.errorMsg = this.taskErrorMessage || 'AI分析小憩中了，请返回重试'
+          return
+        }
+        await this.ensureDerivedData()
+      } catch (error) {
+        this.errorMsg = this.parseError(error)
+      } finally {
+        if (!silent) {
+          this.loading = false
+        }
+      }
+    },
+    async fetchAnalyzeStatus() {
+      let res = null
+      if (this.taskId) {
+        try {
+          res = await getMoodAnalyzeTask(this.taskId)
+        } catch (error) {
+          res = null
+        }
+      }
+      if (!res) {
+        res = await getMoodAnalyzeResult(this.recordId)
+      }
+      const payload = this.normalizeAnalyzePayload(res)
+      if (payload.taskId) {
+        this.taskId = payload.taskId
+      }
+      this.analyzeStatus = payload.analyzeStatus
+      this.taskStatus = payload.taskStatus
+      this.pollIntervalMs = payload.pollIntervalMs
+      this.taskErrorCode = payload.errorCode
+      this.taskErrorMessage = payload.errorMessage
+      this.analysis = payload.result
+    },
+    normalizeAnalyzePayload(response) {
+      const payload = (response && response.data) || {}
+      return {
+        taskId: Number(payload.taskId || 0),
+        taskStatus: payload.taskStatus || this.normalizeTaskStatus(payload.analyzeStatus),
+        analyzeStatus: payload.analyzeStatus == null ? 0 : Number(payload.analyzeStatus),
+        pollIntervalMs: Number(payload.pollIntervalMs || 2500),
+        errorCode: payload.errorCode || '',
+        errorMessage: payload.errorMessage || '',
+        result: payload.result || null
+      }
+    },
+    startPolling() {
+      this.clearPolling()
+      this.pollTimes = 0
+      this.scheduleNextPoll()
+    },
+    scheduleNextPoll() {
+      this.clearPolling()
+      const delay = Math.max(1500, Number(this.pollIntervalMs || 2500))
+      this.pollTimer = setTimeout(() => {
+        this.pollTask()
+      }, delay)
+    },
+    async pollTask() {
+      this.pollTimes += 1
+      try {
+        await this.fetchAnalyzeStatus()
+        if (this.isPendingTask) {
+          if (this.pollTimes >= this.maxPollTimes) {
+            this.errorMsg = '分析时间比平时久一些，你可以稍后回来继续查看'
+            this.clearPolling()
+            return
+          }
+          this.scheduleNextPoll()
+          return
+        }
+        this.clearPolling()
+        if (this.analyzeStatus === 2 || this.taskStatus === 'FAIL') {
+          this.errorMsg = this.taskErrorMessage || 'AI分析失败，请重新发起分析'
+          return
+        }
+        await this.ensureDerivedData()
+      } catch (error) {
+        if (this.pollTimes >= this.maxPollTimes) {
+          this.errorMsg = this.parseError(error)
+          this.clearPolling()
+          return
+        }
+        this.scheduleNextPoll()
+      }
+    },
+    clearPolling() {
+      if (this.pollTimer) {
+        clearTimeout(this.pollTimer)
+        this.pollTimer = null
+      }
+    },
+    async refreshTask() {
+      this.errorMsg = ''
+      this.loading = true
+      try {
+        await this.loadData({ silent: false })
+      } finally {
+        this.loading = false
+      }
+    },
+    async ensureDerivedData() {
+      if (this.derivedLoading) {
+        return
+      }
+      this.derivedLoading = true
+      this.derivedErrorMsg = ''
+      try {
+        await this.fetchExistingDerivedData(3)
+        if (!this.vector || !this.weather) {
+          this.derivedErrorMsg = '分析已完成，衍生结果正在同步中，请稍后刷新查看'
+        }
+      } catch (error) {
+        this.derivedErrorMsg = this.parseError(error)
+      } finally {
+        this.derivedLoading = false
+      }
+    },
+    async fetchExistingDerivedData(retries = 1) {
+      for (let index = 0; index < retries; index += 1) {
+        const [vectorRes, weatherRes] = await Promise.allSettled([
+          getMoodVector(this.recordId),
+          getMoodWeatherMapping(this.recordId)
+        ])
+        this.vector = vectorRes.status === 'fulfilled' ? (vectorRes.value.data || null) : null
+        this.weather = weatherRes.status === 'fulfilled' ? (weatherRes.value.data || null) : null
+        if (this.vector && this.weather) {
+          return
+        }
+        if (index < retries - 1) {
+          await this.sleep(800)
+        }
+      }
+    },
+    async retryAnalyze() {
+      this.clearPolling()
       this.loading = true
       this.errorMsg = ''
+      this.taskErrorCode = ''
+      this.taskErrorMessage = ''
+      this.vector = null
+      this.weather = null
       try {
-        await this.fetchAnalyze()
-        await this.fetchVectorAndWeather()
-        if (this.analyzeStatus === 0) {
-          this.startPolling()
-        } else if (this.analyzeStatus === 2) {
-          this.errorMsg = 'AI分析小憩中了，请返回重试'
-        }
+        const res = await createMoodAnalyzeTask(this.recordId)
+        const payload = this.normalizeAnalyzePayload(res)
+        this.taskId = payload.taskId
+        this.taskStatus = payload.taskStatus
+        this.analyzeStatus = payload.analyzeStatus
+        this.analysis = payload.result
+        this.pollIntervalMs = payload.pollIntervalMs
+        this.startPolling()
       } catch (error) {
         this.errorMsg = this.parseError(error)
       } finally {
         this.loading = false
       }
     },
-    async fetchAnalyze() {
-      const res = await getMoodAnalyzeResult(this.recordId)
-      const payload = res.data || {}
-      this.analyzeStatus = payload.analyzeStatus == null ? 0 : payload.analyzeStatus
-      this.analysis = payload.result || null
-    },
-    async fetchVectorAndWeather() {
-      try {
-        const [vectorRes, weatherRes] = await Promise.all([
-          getMoodVector(this.recordId),
-          getMoodWeatherMapping(this.recordId)
-        ])
-        this.vector = vectorRes.data || null
-        this.weather = weatherRes.data || null
-      } catch (error) {
-        if (this.analyzeStatus !== 0) throw error
-      }
-    },
-    startPolling() {
-      this.clearPolling()
-      this.pollTimes = 0
-      this.pollTimer = setInterval(async () => {
-        this.pollTimes += 1
-        try {
-          await this.fetchAnalyze()
-          if (this.analyzeStatus === 1) {
-            this.clearPolling()
-            await this.fetchVectorAndWeather()
-          }
-          if (this.analyzeStatus === 2 || this.pollTimes >= 8) {
-            this.clearPolling()
-          }
-        } catch (error) {
-          this.clearPolling()
-        }
-      }, 2500)
-    },
-    clearPolling() {
-      if (this.pollTimer) {
-        clearInterval(this.pollTimer)
-        this.pollTimer = null
-      }
+    normalizeTaskStatus(analyzeStatus) {
+      if (analyzeStatus === 1) return 'SUCCESS'
+      if (analyzeStatus === 2) return 'FAIL'
+      return 'PENDING'
     },
     formatVectorValue(value) {
       if (value === null || value === undefined || value === '') return '--'
@@ -274,10 +462,17 @@ export default {
     },
     parseError(error) {
       if (!error) return '请求失败，请稍后重试'
-      if (typeof error === 'string') return error
+      if (typeof error === 'string') {
+        if (error === '500') return '服务暂时有点忙，请稍后重试'
+        return error
+      }
+      if (typeof error === 'number') return '请求失败，请稍后重试'
       if (error.msg) return error.msg
       if (error.message) return error.message
       return '请求失败，请稍后重试'
+    },
+    sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms))
     },
     goWeather() {
       this.$tab.switchTab('/pages/weather/index')
@@ -360,6 +555,12 @@ export default {
   font-size: 28rpx;
   color: #8A98A8;
   line-height: 1.6;
+}
+
+.state-tip {
+  margin-top: 18rpx;
+  font-size: 24rpx;
+  color: #A3AFC0;
 }
 
 /* --- AI 解析卡片 --- */
@@ -477,6 +678,16 @@ export default {
 .summary-header { font-size: 24rpx; color: #FF8DA1; font-weight: 600; margin-bottom: 12rpx; }
 .summary { font-size: 28rpx; color: #4A5568; line-height: 1.7; }
 
+.inline-notice {
+  margin-top: 24rpx;
+  padding: 20rpx 24rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 141, 161, 0.08);
+  color: #D96B82;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
 /* --- 情绪雷达 (向量卡片) --- */
 .grid {
   display: grid;
@@ -510,6 +721,24 @@ export default {
   background: linear-gradient(90deg, #5C9CE6 0%, #FF8DA1 100%);
   border-radius: 4rpx;
   transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.section-empty {
+  text-align: center;
+  padding: 24rpx 12rpx 8rpx;
+}
+
+.empty-title {
+  color: #2C3E50;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.empty-text {
+  margin-top: 12rpx;
+  color: #8A98A8;
+  font-size: 24rpx;
+  line-height: 1.7;
 }
 
 /* --- 天气映射卡片 --- */
@@ -598,6 +827,10 @@ export default {
   border-radius: 50rpx;
   height: 88rpx;
   line-height: 84rpx;
+}
+
+.retry-btn {
+  width: 320rpx;
 }
 
 /* --- 动画 --- */

@@ -26,6 +26,9 @@ public interface BizMoodRecordMapper
     
     int updateAnalyzeResult(@Param("id") Long id, @Param("analyzeStatus") Integer analyzeStatus,
             @Param("riskLevel") Integer riskLevel, @Param("updateBy") String updateBy, @Param("updateTime") Date updateTime);
+
+    int markAnalyzeQueued(@Param("id") Long id, @Param("analyzeStatus") Integer analyzeStatus, @Param("updateBy") String updateBy,
+            @Param("updateTime") Date updateTime);
 }
 
 

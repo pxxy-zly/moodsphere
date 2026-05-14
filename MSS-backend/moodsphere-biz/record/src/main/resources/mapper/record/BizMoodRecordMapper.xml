@@ -139,6 +139,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           and del_flag = 0
     </update>
 
+    <update id="markAnalyzeQueued">
+        update biz_mood_record
+        set analyze_status = #{analyzeStatus},
+            update_by = #{updateBy},
+            update_time = #{updateTime}
+        where id = #{id}
+          and del_flag = 0
+    </update>
+
 </mapper>
 
 
